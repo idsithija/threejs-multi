@@ -812,6 +812,9 @@
       westWall.position.set(-arenaSize, wallHeight / 2, 0);
       westWall.castShadow = true;
       scene.add(westWall);
+      
+      // Store walls in array for bullet hit detection
+      const arenaWalls = [northWall, southWall, eastWall, westWall];
 
       // Cover objects (boxes and walls)
       const coverObjects = [];
@@ -891,6 +894,40 @@
           const box = new THREE.Box3().setFromObject(cover);
           coverBoundingBoxes.push(box);
       });
+
+      // Bullet impact decals
+      const bulletHoles = [];
+      const maxBulletHoles = 50;
+      const bulletHoleColors = [0xFFEB3B, 0xFF5722, 0x00E5FF, 0xFF1744, 0x76FF03];
+      
+      function createBulletHole(point, normal, hitObject) {
+          // Create a small flat circle as bullet hole
+          const holeGeometry = new THREE.CircleGeometry(0.1, 6);
+          const holeMaterial = new THREE.MeshBasicMaterial({ 
+              color: bulletHoleColors[Math.floor(Math.random() * bulletHoleColors.length)],
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.8
+          });
+          const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+          
+          // Position at hit point, slightly offset to avoid z-fighting
+          hole.position.copy(point).add(normal.multiplyScalar(0.01));
+          
+          // Orient to face the normal direction
+          hole.lookAt(point.clone().add(normal));
+          
+          scene.add(hole);
+          bulletHoles.push(hole);
+          
+          // Remove oldest bullet hole if we exceed max
+          if (bulletHoles.length > maxBulletHoles) {
+              const oldHole = bulletHoles.shift();
+              scene.remove(oldHole);
+              oldHole.geometry.dispose();
+              oldHole.material.dispose();
+          }
+      }
 
       // Remove target system for PvP arena
 
@@ -1158,16 +1195,26 @@
 
           raycaster.setFromCamera(mouse, camera);
           
-          // Check for hits on other players and cover
+          // Check for hits on other players, cover, walls, and ground
           const otherPlayerObjects = Object.values(otherPlayerMeshes).map(p => p.children).flat();
-          const allObjects = [...otherPlayerObjects, ...coverObjects];
+          const allObjects = [...otherPlayerObjects, ...coverObjects, ...arenaWalls, ground];
           const intersects = raycaster.intersectObjects(allObjects, false);
 
           if (intersects.length > 0) {
-              // Check if we hit cover first (cover blocks the shot)
-              if (coverObjects.includes(intersects[0].object)) {
-                  // Hit cover, bullet stopped
-                  return;
+              const hitObject = intersects[0].object;
+              
+              // Check if we hit cover, walls, or ground (blocks the shot)
+              if (coverObjects.includes(hitObject) || arenaWalls.includes(hitObject) || hitObject === ground) {
+                  // Create bullet hole at impact point
+                  createBulletHole(
+                      intersects[0].point,
+                      intersects[0].face.normal.clone(),
+                      hitObject
+                  );
+                  // Hit cover/wall/ground, bullet stopped (unless it's ground, check for players below)
+                  if (hitObject !== ground) {
+                      return;
+                  }
               }
               
               // Find which player was hit
