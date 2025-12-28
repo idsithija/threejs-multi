@@ -1024,14 +1024,18 @@
           // Position at hit point with proper offset
           hole.position.copy(point).add(worldNormal.multiplyScalar(0.005));
           
-          // CircleGeometry faces up by default (Y-axis), we need to rotate it to face the normal
-          // Use lookAt to orient the circle perpendicular to the surface
-          const targetPoint = new THREE.Vector3().copy(point).add(worldNormal);
-          hole.lookAt(targetPoint);
+          // Align the decal to the surface using quaternion
+          // CircleGeometry's default normal is (0, 0, 1)
+          const circleNormal = new THREE.Vector3(0, 0, 1);
+          const quaternion = new THREE.Quaternion();
+          quaternion.setFromUnitVectors(circleNormal, worldNormal);
+          hole.setRotationFromQuaternion(quaternion);
           
-          // Add slight random rotation around the normal axis for variety
-          const axis = new THREE.Vector3().copy(worldNormal).normalize();
-          hole.rotateOnAxis(axis, Math.random() * Math.PI * 2);
+          // Add slight random rotation around the surface normal
+          const randomAngle = Math.random() * Math.PI * 2;
+          const randomQuat = new THREE.Quaternion();
+          randomQuat.setFromAxisAngle(worldNormal, randomAngle);
+          hole.quaternion.multiply(randomQuat);
           
           scene.add(hole);
           bulletHoles.push(hole);
