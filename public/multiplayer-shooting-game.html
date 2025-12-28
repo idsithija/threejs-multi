@@ -857,14 +857,6 @@
                   if (otherPlayerMeshes[targetId].children.includes(intersects[0].object)) {
                       playHitSound();
                       
-                      // Client-side prediction: immediately update health bar
-                      const targetMesh = otherPlayerMeshes[targetId];
-                      if (targetMesh && targetMesh.userData.health !== undefined) {
-                          const predictedHealth = Math.max(0, targetMesh.userData.health - 25);
-                          targetMesh.userData.health = predictedHealth;
-                          updateHealthBar(targetMesh, predictedHealth);
-                      }
-                      
                       if (isOnline && socket) {
                           socket.emit('shootPlayer', { targetId: targetId });
                       }
