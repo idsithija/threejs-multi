@@ -901,84 +901,135 @@
       // Store walls in array for bullet hit detection
       const arenaWalls = [northWall, southWall, eastWall, westWall];
 
-      // Cover objects (boxes and walls)
+      // Cover objects and building structures (Call of Duty style)
       const coverObjects = [];
-      const coverColors = [0xFF6F00, 0x00BCD4, 0xE91E63, 0xFFEB3B, 0x4CAF50];
       
-      // Large center box
-      const centerBoxTexture = createDotTexture('#FF1744', '#C51162');
-      const centerBox = new THREE.Mesh(
-          new THREE.BoxGeometry(3, 2, 3),
-          new THREE.MeshStandardMaterial({ map: centerBoxTexture, flatShading: true, roughness: 0.8, metalness: 0.1 })
-      );
-      centerBox.position.set(0, 1, 0);
-      centerBox.castShadow = true;
-      centerBox.receiveShadow = true;
-      scene.add(centerBox);
-      coverObjects.push(centerBox);
+      // Building materials
+      const brickTexture = createGridTexture('#8B4513', '#654321');
+      const brickMaterial = new THREE.MeshStandardMaterial({ map: brickTexture, flatShading: true, roughness: 0.9, metalness: 0.1 });
       
-      // Corner boxes
-      const corners = [
-          { x: -12, z: -12 },
-          { x: 12, z: -12 },
-          { x: -12, z: 12 },
-          { x: 12, z: 12 }
+      const concreteTexture = createDotTexture('#696969', '#4A4A4A');
+      const concreteMaterial = new THREE.MeshStandardMaterial({ map: concreteTexture, flatShading: true, roughness: 0.8, metalness: 0.1 });
+      
+      const metalTexture = createStripedTexture('#778899', '#556677');
+      const metalMaterial = new THREE.MeshStandardMaterial({ map: metalTexture, flatShading: true, roughness: 0.6, metalness: 0.4 });
+      
+      const crateTexture = createGridTexture('#D2691E', '#8B4513');
+      const crateMaterial = new THREE.MeshStandardMaterial({ map: crateTexture, flatShading: true, roughness: 0.7, metalness: 0.05 });
+      
+      // === CENTRAL BUILDING (Two-story structure) ===
+      // Ground floor walls
+      const buildingWalls = [
+          // Main structure outer walls
+          { x: 0, z: -5, w: 10, h: 2.5, d: 0.3 }, // North wall
+          { x: 0, z: 5, w: 10, h: 2.5, d: 0.3 },  // South wall
+          { x: -5, z: 0, w: 0.3, h: 2.5, d: 10 }, // West wall
+          { x: 5, z: 0, w: 0.3, h: 2.5, d: 10 },  // East wall
+          
+          // Interior dividing walls
+          { x: 0, z: 0, w: 0.3, h: 2.5, d: 4 },    // Center divider (north-south)
+          { x: -2, z: 2, w: 4, h: 2.5, d: 0.3 },   // Room separator (east-west)
       ];
-      corners.forEach((pos, i) => {
-          const colorHex = '#' + coverColors[i % coverColors.length].toString(16).padStart(6, '0');
-          const darkerColor = '#' + (coverColors[i % coverColors.length] - 0x222222).toString(16).padStart(6, '0');
-          const boxTexture = createGridTexture(colorHex, darkerColor);
-          const box = new THREE.Mesh(
-              new THREE.BoxGeometry(2, 1.5, 2),
-              new THREE.MeshStandardMaterial({ map: boxTexture, flatShading: true, roughness: 0.8, metalness: 0.1 })
+      
+      buildingWalls.forEach(wall => {
+          const wallMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(wall.w, wall.h, wall.d),
+              brickMaterial
           );
-          box.position.set(pos.x, 0.75, pos.z);
-          box.castShadow = true;
-          box.receiveShadow = true;
-          scene.add(box);
-          coverObjects.push(box);
+          wallMesh.position.set(wall.x, wall.h / 2, wall.z);
+          wallMesh.castShadow = true;
+          wallMesh.receiveShadow = true;
+          scene.add(wallMesh);
+          coverObjects.push(wallMesh);
+          arenaWalls.push(wallMesh);
       });
       
-      // Small wall covers
-      const wallCovers = [
-          { x: -8, z: 0, width: 0.5, height: 1.8, depth: 4 },
-          { x: 8, z: 0, width: 0.5, height: 1.8, depth: 4 },
-          { x: 0, z: -8, width: 4, height: 1.8, depth: 0.5 },
-          { x: 0, z: 8, width: 4, height: 1.8, depth: 0.5 }
+      // Doorways/Windows (low walls for cover)
+      const windowCovers = [
+          { x: 5, z: -2.5, size: 1.5 }, // East side window
+          { x: 5, z: 2.5, size: 1.5 },  // East side window
+          { x: -5, z: -2.5, size: 1.5 }, // West side window
+          { x: -5, z: 2.5, size: 1.5 },  // West side window
       ];
-      wallCovers.forEach((wall, i) => {
-          const wallCoverTexture = createStripedTexture('#00E5FF', '#00B8D4');
-          const wallBox = new THREE.Mesh(
-              new THREE.BoxGeometry(wall.width, wall.height, wall.depth),
-              new THREE.MeshStandardMaterial({ map: wallCoverTexture, flatShading: true, roughness: 0.8, metalness: 0.15 })
+      
+      windowCovers.forEach(win => {
+          const windowWall = new THREE.Mesh(
+              new THREE.BoxGeometry(0.3, 1, win.size),
+              concreteMaterial
           );
-          wallBox.position.set(wall.x, wall.height / 2, wall.z);
-          wallBox.castShadow = true;
-          wallBox.receiveShadow = true;
-          scene.add(wallBox);
-          coverObjects.push(wallBox);
+          windowWall.position.set(win.x, 0.5, win.z);
+          windowWall.castShadow = true;
+          windowWall.receiveShadow = true;
+          scene.add(windowWall);
+          coverObjects.push(windowWall);
       });
       
-      // Scattered boxes for tactical cover
-      const scatteredBoxes = [
-          { x: -5, z: -5, size: 1.5 },
-          { x: 5, z: 5, size: 1.5 },
-          { x: -5, z: 5, size: 1.2 },
-          { x: 5, z: -5, size: 1.2 }
+      // === CRATES AND BARRELS (Tactical cover) ===
+      const cratePlacements = [
+          { x: -12, z: -12, size: 1.2, height: 1.2 },
+          { x: -13, z: -11, size: 1, height: 1.5 },
+          { x: 12, z: -12, size: 1.3, height: 1.3 },
+          { x: 12, z: 12, size: 1.2, height: 1.4 },
+          { x: 11, z: 13, size: 1, height: 1.1 },
+          { x: -12, z: 12, size: 1.4, height: 1.2 },
+          { x: 8, z: -8, size: 1.1, height: 1.3 },
+          { x: -8, z: 8, size: 1.2, height: 1.2 },
+          { x: -8, z: -8, size: 1, height: 1.5 },
+          { x: 8, z: 8, size: 1.3, height: 1.1 },
       ];
-      scatteredBoxes.forEach((box, i) => {
-          const colorHex = '#' + coverColors[(i + 2) % coverColors.length].toString(16).padStart(6, '0');
-          const lighterColor = '#' + (coverColors[(i + 2) % coverColors.length] + 0x111111).toString(16).padStart(6, '0');
-          const scatterTexture = createDotTexture(colorHex, lighterColor);
-          const mesh = new THREE.Mesh(
-              new THREE.BoxGeometry(box.size, box.size, box.size),
-              new THREE.MeshStandardMaterial({ map: scatterTexture, flatShading: true, roughness: 0.8, metalness: 0.1 })
+      
+      cratePlacements.forEach(crate => {
+          const crateMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(crate.size, crate.height, crate.size),
+              crateMaterial
           );
-          mesh.position.set(box.x, box.size / 2, box.z);
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-          scene.add(mesh);
-          coverObjects.push(mesh);
+          crateMesh.position.set(crate.x, crate.height / 2, crate.z);
+          crateMesh.castShadow = true;
+          crateMesh.receiveShadow = true;
+          scene.add(crateMesh);
+          coverObjects.push(crateMesh);
+      });
+      
+      // Metal barrels (cylinders)
+      const barrelPlacements = [
+          { x: -15, z: 0 },
+          { x: 15, z: 0 },
+          { x: 0, z: -15 },
+          { x: 0, z: 15 },
+          { x: -10, z: -15 },
+          { x: 10, z: 15 },
+      ];
+      
+      barrelPlacements.forEach(barrel => {
+          const barrelMesh = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.5, 0.5, 1.5, 8),
+              metalMaterial
+          );
+          barrelMesh.position.set(barrel.x, 0.75, barrel.z);
+          barrelMesh.castShadow = true;
+          barrelMesh.receiveShadow = true;
+          scene.add(barrelMesh);
+          coverObjects.push(barrelMesh);
+      });
+      
+      // === CONCRETE BARRIERS ===
+      const barriers = [
+          { x: -10, z: -5, w: 0.4, h: 1.2, d: 3 },
+          { x: 10, z: 5, w: 0.4, h: 1.2, d: 3 },
+          { x: -5, z: -10, w: 3, h: 1.2, d: 0.4 },
+          { x: 5, z: 10, w: 3, h: 1.2, d: 0.4 },
+      ];
+      
+      barriers.forEach(barrier => {
+          const barrierMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(barrier.w, barrier.h, barrier.d),
+              concreteMaterial
+          );
+          barrierMesh.position.set(barrier.x, barrier.h / 2, barrier.z);
+          barrierMesh.castShadow = true;
+          barrierMesh.receiveShadow = true;
+          scene.add(barrierMesh);
+          coverObjects.push(barrierMesh);
       });
       
       // Pre-calculate bounding boxes for collision detection (performance optimization)
