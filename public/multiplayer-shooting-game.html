@@ -338,7 +338,7 @@
                       otherPlayerMeshes[id] = createOtherPlayerMesh(players[id]);
                       otherPlayerMeshes[id].position.set(
                           players[id].position.x,
-                          players[id].position.y,
+                          0,
                           players[id].position.z
                       );
                       scene.add(otherPlayerMeshes[id]);
@@ -500,22 +500,22 @@
           const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
           const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
           
-          // Left eye
+          // Left eye (positioned forward on Z axis)
           const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-          leftEye.position.set(-0.1, 2.05, 0.2);
+          leftEye.position.set(-0.08, 2.05, -0.2);
           group.add(leftEye);
           
           const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), pupilMaterial);
-          leftPupil.position.set(-0.1, 2.05, 0.25);
+          leftPupil.position.set(-0.08, 2.05, -0.25);
           group.add(leftPupil);
           
-          // Right eye
+          // Right eye (positioned forward on Z axis)
           const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-          rightEye.position.set(0.1, 2.05, 0.2);
+          rightEye.position.set(0.08, 2.05, -0.2);
           group.add(rightEye);
           
           const rightPupil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), pupilMaterial);
-          rightPupil.position.set(0.1, 2.05, 0.25);
+          rightPupil.position.set(0.08, 2.05, -0.25);
           group.add(rightPupil);
 
           const canvas = document.createElement('canvas');
@@ -627,8 +627,8 @@
 
           const playerMesh = otherPlayerMeshes[data.id];
           
-          // Update position
-          playerMesh.position.set(data.position.x, data.position.y, data.position.z);
+          // Update position (data.position.y is camera height 1.6, so offset mesh to ground)
+          playerMesh.position.set(data.position.x, 0, data.position.z);
           
           // Update rotation if provided
           if (data.rotation && data.rotation.y !== undefined) {
@@ -855,7 +855,7 @@
                           otherPlayerMeshes[id] = createOtherPlayerMesh(players[id]);
                           otherPlayerMeshes[id].position.set(
                               players[id].position.x,
-                              players[id].position.y,
+                              0,
                               players[id].position.z
                           );
                           scene.add(otherPlayerMeshes[id]);
