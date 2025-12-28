@@ -1264,11 +1264,7 @@
           }
           
           if (e.key.toLowerCase() === 'r' && gameActive) {
-              if (ammo < 30) {
-                  ammo = 30;
-                  updateUI();
-                  playReloadSound();
-              }
+              reload();
           }
       });
 
@@ -1279,6 +1275,20 @@
 
       let yaw = 0;
       let pitch = 0;
+      let isReloading = false;
+      
+      function reload() {
+          if (isReloading || ammo === 30) return;
+          
+          isReloading = true;
+          playReloadSound();
+          
+          setTimeout(function() {
+              ammo = 30;
+              updateUI();
+              isReloading = false;
+          }, 1500); // 1.5 second reload time
+      }
 
       document.addEventListener('click', function() {
           if (gameActive) {
@@ -1301,14 +1311,26 @@
       });
 
       function shoot() {
-          if (!gameActive || isDead) return;
+          if (!gameActive || isDead || isReloading) return;
 
           if (ammo <= 0) {
               playEmptyClickSound();
+              // Auto-reload when out of ammo
+              reload();
               return;
           }
 
           ammo--;
+          
+          // Auto-reload on last shot
+          if (ammo === 0) {
+              setTimeout(function() {
+                  if (!isReloading && ammo === 0) {
+                      reload();
+                  }
+              }, 100);
+          }
+          
           updateUI();
           playShootSound();
 
