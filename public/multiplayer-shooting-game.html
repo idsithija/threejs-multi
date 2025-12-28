@@ -736,6 +736,87 @@
           document.getElementById('connectionStatus').innerHTML = '<span class="offline">⚫ Offline Mode</span>';
       }
 
+      // Create procedural textures
+      function createGridTexture(color1, color2, size = 512) {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          
+          // Background
+          ctx.fillStyle = color1;
+          ctx.fillRect(0, 0, size, size);
+          
+          // Grid lines
+          ctx.strokeStyle = color2;
+          ctx.lineWidth = 3;
+          const gridSize = size / 8;
+          
+          for (let i = 0; i <= 8; i++) {
+              ctx.beginPath();
+              ctx.moveTo(i * gridSize, 0);
+              ctx.lineTo(i * gridSize, size);
+              ctx.stroke();
+              
+              ctx.beginPath();
+              ctx.moveTo(0, i * gridSize);
+              ctx.lineTo(size, i * gridSize);
+              ctx.stroke();
+          }
+          
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          texture.repeat.set(4, 4);
+          return texture;
+      }
+      
+      function createStripedTexture(color1, color2, size = 512) {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          
+          const stripeWidth = size / 16;
+          for (let i = 0; i < 16; i++) {
+              ctx.fillStyle = i % 2 === 0 ? color1 : color2;
+              ctx.fillRect(0, i * stripeWidth, size, stripeWidth);
+          }
+          
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          return texture;
+      }
+      
+      function createDotTexture(baseColor, dotColor, size = 512) {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          
+          ctx.fillStyle = baseColor;
+          ctx.fillRect(0, 0, size, size);
+          
+          ctx.fillStyle = dotColor;
+          const dotSize = size / 32;
+          const spacing = size / 8;
+          
+          for (let x = 0; x < 8; x++) {
+              for (let y = 0; y < 8; y++) {
+                  ctx.beginPath();
+                  ctx.arc(x * spacing + spacing / 2, y * spacing + spacing / 2, dotSize, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+          }
+          
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          texture.repeat.set(2, 2);
+          return texture;
+      }
+
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0xFF6B9D);
       scene.fog = new THREE.Fog(0xFF6B9D, 30, 80);
@@ -770,10 +851,12 @@
       scene.add(light2);
 
       const groundGeometry = new THREE.PlaneGeometry(40, 40, 8, 8);
+      const groundTexture = createGridTexture('#00E676', '#00C853');
       const groundMaterial = new THREE.MeshStandardMaterial({ 
-          color: 0x00E676,
+          map: groundTexture,
           flatShading: true,
-          roughness: 0.8
+          roughness: 0.8,
+          metalness: 0.1
       });
       const ground = new THREE.Mesh(groundGeometry, groundMaterial);
       ground.rotation.x = -Math.PI / 2;
@@ -781,10 +864,12 @@
       scene.add(ground);
 
       // Arena walls
+      const wallTexture = createStripedTexture('#7C4DFF', '#6200EA');
       const wallMaterial = new THREE.MeshStandardMaterial({ 
-          color: 0x7C4DFF,
+          map: wallTexture,
           flatShading: true,
-          roughness: 0.7
+          roughness: 0.7,
+          metalness: 0.2
       });
       const wallHeight = 3;
       const arenaSize = 20;
@@ -821,9 +906,10 @@
       const coverColors = [0xFF6F00, 0x00BCD4, 0xE91E63, 0xFFEB3B, 0x4CAF50];
       
       // Large center box
+      const centerBoxTexture = createDotTexture('#FF1744', '#C51162');
       const centerBox = new THREE.Mesh(
           new THREE.BoxGeometry(3, 2, 3),
-          new THREE.MeshStandardMaterial({ color: 0xFF1744, flatShading: true, roughness: 0.8 })
+          new THREE.MeshStandardMaterial({ map: centerBoxTexture, flatShading: true, roughness: 0.8, metalness: 0.1 })
       );
       centerBox.position.set(0, 1, 0);
       centerBox.castShadow = true;
@@ -839,9 +925,12 @@
           { x: 12, z: 12 }
       ];
       corners.forEach((pos, i) => {
+          const colorHex = '#' + coverColors[i % coverColors.length].toString(16).padStart(6, '0');
+          const darkerColor = '#' + (coverColors[i % coverColors.length] - 0x222222).toString(16).padStart(6, '0');
+          const boxTexture = createGridTexture(colorHex, darkerColor);
           const box = new THREE.Mesh(
               new THREE.BoxGeometry(2, 1.5, 2),
-              new THREE.MeshStandardMaterial({ color: coverColors[i % coverColors.length], flatShading: true, roughness: 0.8 })
+              new THREE.MeshStandardMaterial({ map: boxTexture, flatShading: true, roughness: 0.8, metalness: 0.1 })
           );
           box.position.set(pos.x, 0.75, pos.z);
           box.castShadow = true;
@@ -858,9 +947,10 @@
           { x: 0, z: 8, width: 4, height: 1.8, depth: 0.5 }
       ];
       wallCovers.forEach((wall, i) => {
+          const wallCoverTexture = createStripedTexture('#00E5FF', '#00B8D4');
           const wallBox = new THREE.Mesh(
               new THREE.BoxGeometry(wall.width, wall.height, wall.depth),
-              new THREE.MeshStandardMaterial({ color: 0x00E5FF, flatShading: true, roughness: 0.8 })
+              new THREE.MeshStandardMaterial({ map: wallCoverTexture, flatShading: true, roughness: 0.8, metalness: 0.15 })
           );
           wallBox.position.set(wall.x, wall.height / 2, wall.z);
           wallBox.castShadow = true;
@@ -877,9 +967,12 @@
           { x: 5, z: -5, size: 1.2 }
       ];
       scatteredBoxes.forEach((box, i) => {
+          const colorHex = '#' + coverColors[(i + 2) % coverColors.length].toString(16).padStart(6, '0');
+          const lighterColor = '#' + (coverColors[(i + 2) % coverColors.length] + 0x111111).toString(16).padStart(6, '0');
+          const scatterTexture = createDotTexture(colorHex, lighterColor);
           const mesh = new THREE.Mesh(
               new THREE.BoxGeometry(box.size, box.size, box.size),
-              new THREE.MeshStandardMaterial({ color: coverColors[(i + 2) % coverColors.length], flatShading: true, roughness: 0.8 })
+              new THREE.MeshStandardMaterial({ map: scatterTexture, flatShading: true, roughness: 0.8, metalness: 0.1 })
           );
           mesh.position.set(box.x, box.size / 2, box.z);
           mesh.castShadow = true;
