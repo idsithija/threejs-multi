@@ -690,8 +690,11 @@
           group.userData.healthBar = healthBarSprite;
           group.userData.healthBarTexture = healthBarTexture;
           
+          // Initialize health in userData
+          group.userData.health = playerData.health !== undefined ? playerData.health : 100;
+          
           // Draw initial full health
-          updateHealthBar(group, 100);
+          updateHealthBar(group, group.userData.health);
 
           return group;
       }
@@ -749,6 +752,8 @@
 
           // Update health bar
           if (data.health !== undefined) {
+              // Store health in userData for client-side prediction
+              playerMesh.userData.health = data.health;
               updateHealthBar(playerMesh, data.health);
           }
 
@@ -851,6 +856,14 @@
               for (let targetId in otherPlayerMeshes) {
                   if (otherPlayerMeshes[targetId].children.includes(intersects[0].object)) {
                       playHitSound();
+                      
+                      // Client-side prediction: immediately update health bar
+                      const targetMesh = otherPlayerMeshes[targetId];
+                      if (targetMesh && targetMesh.userData.health !== undefined) {
+                          const predictedHealth = Math.max(0, targetMesh.userData.health - 25);
+                          targetMesh.userData.health = predictedHealth;
+                          updateHealthBar(targetMesh, predictedHealth);
+                      }
                       
                       if (isOnline && socket) {
                           socket.emit('shootPlayer', { targetId: targetId });
