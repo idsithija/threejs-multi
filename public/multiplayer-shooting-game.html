@@ -1127,41 +1127,22 @@
           const ring = new THREE.Mesh(ringGeometry, ringMaterial);
           hole.add(ring);
           
-          // Transform normal to world space properly
+          // Get world space normal
           const worldNormal = new THREE.Vector3();
+          const normalMatrix = new THREE.Matrix3().getNormalMatrix(hitObject.matrixWorld);
+          worldNormal.copy(normal).applyMatrix3(normalMatrix).normalize();
           
-          // Get the face normal in world coordinates
-          if (hitObject.geometry.isPlaneGeometry || hitObject.rotation.x !== 0) {
-              // For rotated planes (like ground), apply rotation to the normal
-              const localNormal = normal.clone();
-              const normalMatrix = new THREE.Matrix3().getNormalMatrix(hitObject.matrixWorld);
-              worldNormal.copy(localNormal).applyMatrix3(normalMatrix).normalize();
-          } else {
-              // For regular boxes and walls
-              worldNormal.copy(normal).transformDirection(hitObject.matrixWorld).normalize();
-          }
+          // Position at hit point with offset along normal
+          hole.position.copy(point).addScaledVector(worldNormal, 0.005);
           
-          // Position at hit point with proper offset
-          hole.position.copy(point).add(worldNormal.multiplyScalar(0.005));
+          // Orient the circle to face along the normal direction
+          // Use lookAt from a point along the normal
+          const lookAtPoint = new THREE.Vector3().copy(point).add(worldNormal);
+          hole.lookAt(lookAtPoint);
           
-          // Create proper rotation to align circle flat against the surface
-          // The circle's default orientation has its normal pointing in +Z direction
-          const alignQuaternion = new THREE.Quaternion();
-          const targetUp = new THREE.Vector3(0, 1, 0);
-          
-          // If normal is nearly parallel to Y axis, use different up vector
-          if (Math.abs(worldNormal.y) > 0.99) {
-              targetUp.set(0, 0, 1);
-          }
-          
-          alignQuaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), worldNormal);
-          hole.setRotationFromQuaternion(alignQuaternion);
-          
-          // Add random rotation around the normal for variety
+          // Random rotation around the normal
           const randomAngle = Math.random() * Math.PI * 2;
-          const randomQuat = new THREE.Quaternion();
-          randomQuat.setFromAxisAngle(worldNormal, randomAngle);
-          hole.quaternion.multiply(randomQuat);
+          hole.rotateZ(randomAngle);
           
           scene.add(hole);
           bulletHoles.push(hole);
