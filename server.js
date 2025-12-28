@@ -23,7 +23,19 @@ io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
 
     socket.on('joinGame', (data) => {
-        // Check max players
+        // Remove any old player with the same name (handles refreshes)
+        for (let id in players) {
+            if (players[id].name === data.name && id !== socket.id) {
+                console.log(`Removing old instance of ${data.name} (${id})`);
+                delete players[id];
+                io.emit('playerLeft', {
+                    playerId: id,
+                    players: players
+                });
+            }
+        }
+
+        // Check max players AFTER cleaning up duplicates
         if (Object.keys(players).length >= MAX_PLAYERS) {
             socket.emit('maxPlayersReached');
             socket.disconnect();

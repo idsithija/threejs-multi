@@ -339,7 +339,8 @@
 
           socket.on('playerLeft', function(data) {
               players = data.players;
-              if (otherPlayerMeshes[data. playerId]) {
+              if (otherPlayerMeshes[data.playerId]) {
+                  console.log('Removing player mesh:', data.playerId);
                   scene.remove(otherPlayerMeshes[data.playerId]);
                   delete otherPlayerMeshes[data.playerId];
               }
