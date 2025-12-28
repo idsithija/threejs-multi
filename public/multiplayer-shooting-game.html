@@ -1233,18 +1233,16 @@
           if (intersects.length > 0) {
               const hitObject = intersects[0].object;
               
-              // Check if we hit cover, walls, or ground (blocks the shot)
+              // Check if we hit cover, walls, or ground
               if (coverObjects.includes(hitObject) || arenaWalls.includes(hitObject) || hitObject === ground) {
-                  // Create bullet hole at impact point
+                  // Create bullet hole at impact point on all surfaces
                   createBulletHole(
                       intersects[0].point,
                       intersects[0].face.normal.clone(),
                       hitObject
                   );
-                  // Hit cover/wall/ground, bullet stopped (unless it's ground, check for players below)
-                  if (hitObject !== ground) {
-                      return;
-                  }
+                  // Bullet stopped by cover/wall/ground
+                  return;
               }
               
               // Find which player was hit
