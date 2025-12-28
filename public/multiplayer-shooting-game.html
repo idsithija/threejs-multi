@@ -514,23 +514,74 @@
           group.add(sprite);
           group.userData.nameSprite = sprite;
 
-          // Health bar
-          const healthBarBg = new THREE.Mesh(
-              new THREE.PlaneGeometry(1, 0.1),
-              new THREE.MeshBasicMaterial({ color: 0x000000 })
-          );
-          healthBarBg.position.y = 2.2;
-          group.add(healthBarBg);
+          // Health bar background (black border)
+          const healthBarBgCanvas = document.createElement('canvas');
+          healthBarBgCanvas.width = 128;
+          healthBarBgCanvas.height = 16;
+          const healthBgCtx = healthBarBgCanvas.getContext('2d');
+          healthBgCtx.fillStyle = '#000000';
+          healthBgCtx.fillRect(0, 0, 128, 16);
+          healthBgCtx.strokeStyle = '#ffffff';
+          healthBgCtx.lineWidth = 2;
+          healthBgCtx.strokeRect(1, 1, 126, 14);
+          
+          const healthBarBgTexture = new THREE.CanvasTexture(healthBarBgCanvas);
+          const healthBarBgSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: healthBarBgTexture }));
+          healthBarBgSprite.position.set(0, 2.1, 0);
+          healthBarBgSprite.scale.set(1, 0.12, 1);
+          group.add(healthBarBgSprite);
+          group.userData.healthBarBg = healthBarBgSprite;
 
-          const healthBar = new THREE.Mesh(
-              new THREE.PlaneGeometry(1, 0.08),
-              new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-          );
-          healthBar.position.set(0, 2.2, 0.01);
-          group.add(healthBar);
-          group.userData.healthBar = healthBar;
+          // Health bar (green bar that changes)
+          const healthBarCanvas = document.createElement('canvas');
+          healthBarCanvas.width = 120;
+          healthBarCanvas.height = 12;
+          group.userData.healthBarCanvas = healthBarCanvas;
+          group.userData.healthBarContext = healthBarCanvas.getContext('2d');
+          
+          const healthBarTexture = new THREE.CanvasTexture(healthBarCanvas);
+          const healthBarSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: healthBarTexture }));
+          healthBarSprite.position.set(0, 2.1, 0.01);
+          healthBarSprite.scale.set(0.94, 0.09, 1);
+          group.add(healthBarSprite);
+          group.userData.healthBar = healthBarSprite;
+          group.userData.healthBarTexture = healthBarTexture;
+          
+          // Draw initial full health
+          updateHealthBar(group, 100);
 
           return group;
+      }
+
+      function updateHealthBar(playerMesh, health) {
+          const ctx = playerMesh.userData.healthBarContext;
+          const canvas = playerMesh.userData.healthBarCanvas;
+          if (!ctx || !canvas) return;
+          
+          const healthPercent = Math.max(0, Math.min(1, health / 100));
+          const barWidth = Math.floor(120 * healthPercent);
+          
+          // Clear canvas
+          ctx.clearRect(0, 0, 120, 12);
+          
+          // Determine color based on health
+          let color;
+          if (healthPercent > 0.6) {
+              color = '#00ff00'; // Green
+          } else if (healthPercent > 0.3) {
+              color = '#ffff00'; // Yellow
+          } else {
+              color = '#ff0000'; // Red
+          }
+          
+          // Draw health bar
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, barWidth, 12);
+          
+          // Update texture
+          if (playerMesh.userData.healthBarTexture) {
+              playerMesh.userData.healthBarTexture.needsUpdate = true;
+          }
       }
 
       function updateOtherPlayer(data) {
@@ -552,31 +603,19 @@
           }
 
           // Update health bar
-          if (data.health !== undefined && playerMesh.userData.healthBar) {
-              const healthPercent = Math.max(0, Math.min(1, data.health / 100));
-              playerMesh.userData.healthBar.scale.x = healthPercent;
-              playerMesh.userData.healthBar.position.x = -(1 - healthPercent) / 2;
-              
-              // Color based on health
-              if (healthPercent > 0.6) {
-                  playerMesh.userData.healthBar.material.color.setHex(0x00ff00);
-              } else if (healthPercent > 0.3) {
-                  playerMesh.userData.healthBar.material.color.setHex(0xffff00);
-              } else {
-                  playerMesh.userData.healthBar.material.color.setHex(0xff0000);
-              }
+          if (data.health !== undefined) {
+              updateHealthBar(playerMesh, data.health);
           }
 
-          // Make sprite and health bar face camera
+          // Make sprites face camera
           if (playerMesh.userData.nameSprite) {
               playerMesh.userData.nameSprite.lookAt(camera.position);
           }
           if (playerMesh.userData.healthBar) {
               playerMesh.userData.healthBar.lookAt(camera.position);
-              const healthBarBg = playerMesh.children.find(c => c.material && c.material.color && c.material.color.getHex() === 0x000000);
-              if (healthBarBg) {
-                  healthBarBg.lookAt(camera.position);
-              }
+          }
+          if (playerMesh.userData.healthBarBg) {
+              playerMesh.userData.healthBarBg.lookAt(camera.position);
           }
       }
 
