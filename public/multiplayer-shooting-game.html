@@ -828,6 +828,12 @@
           if (!e.key) return;
           keys[e.key.toLowerCase()] = true;
           
+          // Exit fullscreen with ESC key
+          if (e.key === 'Escape' && document.fullscreenElement) {
+              document.exitFullscreen();
+              return;
+          }
+          
           // Jump with Space bar
           if (e.key === ' ' && gameActive && !isDead && !isJumping) {
               isJumping = true;
@@ -1009,6 +1015,13 @@
           document.getElementById('crosshair').style.display = 'block';
 
           gameActive = true;
+          
+          // Enter fullscreen
+          if (document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen().catch(err => {
+                  console.log('Fullscreen request failed:', err);
+              });
+          }
 
           if (isOnline && socket) {
               socket.emit('joinGame', { name: playerName });
