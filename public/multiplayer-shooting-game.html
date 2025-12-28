@@ -693,12 +693,12 @@
                   }
                   updateOtherPlayer(data);
               } else {
-                  // Update our own position from server (for respawn)
-                  if (data.position) {
+                  // Update our own position from server only during respawn, not during normal gameplay
+                  if (data.position && isDead) {
                       camera.position.set(data.position.x, data.position.y, data.position.z);
-                  }
-                  if (data.rotation && data.rotation.y !== undefined) {
-                      yaw = data.rotation.y;
+                      if (data.rotation && data.rotation.y !== undefined) {
+                          yaw = data.rotation.y;
+                      }
                   }
               }
           });
@@ -1526,8 +1526,11 @@
                   camera.position.x = Math.max(-19, Math.min(19, camera.position.x));
                   camera.position.z = Math.max(-19, Math.min(19, camera.position.z));
                   
-                  // Collision detection with cover objects (optimized)
+                  // Collision detection with cover objects (optimized with smooth pushback)
                   const playerRadius = 0.5;
+                  const prevX = camera.position.x;
+                  const prevZ = camera.position.z;
+                  
                   playerBoxMin.set(
                       camera.position.x - playerRadius,
                       0,
@@ -1544,16 +1547,21 @@
                       const box = coverBoundingBoxes[i];
                       
                       if (box.intersectsBox(playerBox)) {
-                          // Collision detected, push player back
+                          // Collision detected, smoothly push player back to previous position
                           const centerX = (box.min.x + box.max.x) / 2;
                           const centerZ = (box.min.z + box.max.z) / 2;
                           const dx = camera.position.x - centerX;
                           const dz = camera.position.z - centerZ;
                           
-                          if (Math.abs(dx) > Math.abs(dz)) {
-                              camera.position.x = dx > 0 ? box.max.x + playerRadius : box.min.x - playerRadius;
+                          // Calculate minimum distance to push out
+                          const overlapX = playerRadius + (box.max.x - box.min.x) / 2 - Math.abs(dx);
+                          const overlapZ = playerRadius + (box.max.z - box.min.z) / 2 - Math.abs(dz);
+                          
+                          // Push along the axis with smallest overlap for smoother collision
+                          if (overlapX < overlapZ) {
+                              camera.position.x += dx > 0 ? overlapX : -overlapX;
                           } else {
-                              camera.position.z = dz > 0 ? box.max.z + playerRadius : box.min.z - playerRadius;
+                              camera.position.z += dz > 0 ? overlapZ : -overlapZ;
                           }
                       }
                   }
