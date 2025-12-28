@@ -583,6 +583,14 @@
       const gravity = -0.015;
       const jumpStrength = 0.3;
       const groundLevel = 1.6;
+      
+      // Vaulting variables
+      let isVaulting = false;
+      let vaultProgress = 0;
+      let vaultStartPos = new THREE.Vector3();
+      let vaultEndPos = new THREE.Vector3();
+      let vaultStartY = 0;
+      let vaultPeakY = 0;
 
       const SERVER_URL = window.location.origin;
       try {
@@ -976,7 +984,7 @@
           roofMaterial
       );
       mainRoof.rotation.x = Math.PI / 2; // Rotate to be horizontal
-      mainRoof.position.set(0, 4, 0);
+      mainRoof.position.set(0, 8, 0);
       mainRoof.receiveShadow = true;
       scene.add(mainRoof);
       
@@ -994,10 +1002,10 @@
       
       pillarPositions.forEach(pos => {
           const pillar = new THREE.Mesh(
-              new THREE.BoxGeometry(0.5, 4, 0.5),
+              new THREE.BoxGeometry(0.5, 8, 0.5),
               concreteMaterial
           );
-          pillar.position.set(pos.x, 2, pos.z);
+          pillar.position.set(pos.x, 4, pos.z);
           pillar.castShadow = true;
           pillar.receiveShadow = true;
           scene.add(pillar);
@@ -1369,9 +1377,23 @@
           }
           
           // Jump with Space bar
-          if (e.key === ' ' && gameActive && !isDead && !isJumping) {
-              isJumping = true;
-              verticalVelocity = jumpStrength;
+          if (e.key === ' ' && gameActive && !isDead && !isJumping && !isVaulting) {
+              // Check if player can vault over nearby obstacle
+              const vaultCheck = checkVaultableObstacle();
+              
+              if (vaultCheck.canVault) {
+                  // Start vaulting animation
+                  isVaulting = true;
+                  vaultProgress = 0;
+                  vaultStartPos.copy(camera.position);
+                  vaultEndPos.copy(vaultCheck.targetPos);
+                  vaultStartY = camera.position.y;
+                  vaultPeakY = vaultCheck.obstacleHeight + 0.5; // Clearance over obstacle
+              } else {
+                  // Regular jump
+                  isJumping = true;
+                  verticalVelocity = jumpStrength;
+              }
           }
           
           if (e.key.toLowerCase() === 'r' && gameActive) {
@@ -1634,6 +1656,66 @@
 
       // No timer needed for arena mode
       
+      // Check if player can vault over an obstacle
+      function checkVaultableObstacle() {
+          const playerRadius = 0.5;
+          const vaultDistance = 2.5; // How far ahead to check
+          const maxVaultHeight = 3; // Maximum height player can vault
+          
+          // Get forward direction
+          const forwardDir = new THREE.Vector3(0, 0, -1);
+          forwardDir.applyQuaternion(camera.quaternion);
+          forwardDir.y = 0;
+          forwardDir.normalize();
+          
+          // Check position ahead of player
+          const checkPos = new THREE.Vector3();
+          checkPos.copy(camera.position).add(forwardDir.multiplyScalar(vaultDistance));
+          
+          // Create bounding box for vault check
+          const vaultBox = new THREE.Box3(
+              new THREE.Vector3(checkPos.x - playerRadius, 0, checkPos.z - playerRadius),
+              new THREE.Vector3(checkPos.x + playerRadius, maxVaultHeight, checkPos.z + playerRadius)
+          );
+          
+          // Check against cover objects
+          for (let i = 0; i < coverBoundingBoxes.length; i++) {
+              const box = coverBoundingBoxes[i];
+              
+              if (box.intersectsBox(vaultBox)) {
+                  const obstacleHeight = box.max.y;
+                  
+                  // Check if obstacle is vaultable height (not too tall)
+                  if (obstacleHeight > groundLevel && obstacleHeight <= groundLevel + maxVaultHeight) {
+                      // Calculate landing position on other side
+                      const landingPos = new THREE.Vector3();
+                      const boxCenter = new THREE.Vector3();
+                      box.getCenter(boxCenter);
+                      
+                      // Move to other side of box
+                      const toBox = new THREE.Vector3().subVectors(boxCenter, camera.position);
+                      toBox.y = 0;
+                      toBox.normalize();
+                      
+                      const boxSize = new THREE.Vector3();
+                      box.getSize(boxSize);
+                      const clearDistance = Math.max(boxSize.x, boxSize.z) / 2 + playerRadius + 0.3;
+                      
+                      landingPos.copy(boxCenter).add(toBox.multiplyScalar(clearDistance));
+                      landingPos.y = groundLevel;
+                      
+                      return {
+                          canVault: true,
+                          targetPos: landingPos,
+                          obstacleHeight: obstacleHeight
+                      };
+                  }
+              }
+          }
+          
+          return { canVault: false };
+      }
+      
       // Reusable vectors for performance (avoid creating new objects every frame)
       const forward = new THREE.Vector3();
       const right = new THREE.Vector3();
@@ -1705,8 +1787,29 @@
                   }
               }
               
-              // Jump physics
-              if (isJumping) {
+              // Vaulting animation
+              if (isVaulting) {
+                  vaultProgress += 0.04; // Animation speed
+                  
+                  if (vaultProgress >= 1) {
+                      // Vault complete
+                      camera.position.copy(vaultEndPos);
+                      camera.position.y = groundLevel;
+                      isVaulting = false;
+                      vaultProgress = 0;
+                  } else {
+                      // Smooth arc motion
+                      camera.position.x = vaultStartPos.x + (vaultEndPos.x - vaultStartPos.x) * vaultProgress;
+                      camera.position.z = vaultStartPos.z + (vaultEndPos.z - vaultStartPos.z) * vaultProgress;
+                      
+                      // Parabolic arc for Y (smooth up and down)
+                      const arcHeight = vaultPeakY - vaultStartY;
+                      const heightProgress = Math.sin(vaultProgress * Math.PI); // 0 to 1 to 0
+                      camera.position.y = vaultStartY + arcHeight * heightProgress;
+                  }
+              }
+              // Regular jump physics
+              else if (isJumping) {
                   verticalVelocity += gravity;
                   camera.position.y += verticalVelocity;
                   
