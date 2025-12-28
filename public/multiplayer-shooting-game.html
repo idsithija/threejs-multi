@@ -578,7 +578,8 @@
       const moveSpeed = 0.1;
 
       document.addEventListener('keydown', function(e) {
-          keys[e.key. toLowerCase()] = true;
+          if (!e.key) return;
+          keys[e.key.toLowerCase()] = true;
           if (e.key.toLowerCase() === 'r' && gameActive) {
               if (ammo < 30) {
                   ammo = 30;
@@ -589,6 +590,7 @@
       });
 
       document.addEventListener('keyup', function(e) {
+          if (!e.key) return;
           keys[e.key.toLowerCase()] = false;
       });
 
