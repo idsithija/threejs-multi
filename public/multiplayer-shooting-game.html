@@ -322,6 +322,16 @@
 
           socket.on('playerJoined', function(data) {
               players = data.players;
+              
+              // Remove meshes for players that no longer exist
+              for (let meshId in otherPlayerMeshes) {
+                  if (!players[meshId]) {
+                      console.log('Cleaning up old player mesh:', meshId);
+                      scene.remove(otherPlayerMeshes[meshId]);
+                      delete otherPlayerMeshes[meshId];
+                  }
+              }
+              
               // Create meshes for any new players we don't have yet
               for (let id in players) {
                   if (id !== playerId && !otherPlayerMeshes[id]) {
@@ -332,6 +342,7 @@
                           players[id].position.z
                       );
                       scene.add(otherPlayerMeshes[id]);
+                      console.log('Created mesh for new player:', id);
                   }
               }
               updateLeaderboard();
@@ -760,6 +771,12 @@
                   playerId = data.id;
                   players = data.players;
                   
+                  // Clear all existing meshes first (in case of rejoin)
+                  for (let meshId in otherPlayerMeshes) {
+                      scene.remove(otherPlayerMeshes[meshId]);
+                      delete otherPlayerMeshes[meshId];
+                  }
+                  
                   // Create meshes for all existing players except ourselves
                   for (let id in players) {
                       if (id !== playerId) {
@@ -770,6 +787,7 @@
                               players[id].position.z
                           );
                           scene.add(otherPlayerMeshes[id]);
+                          console.log('Created mesh for existing player:', id);
                       }
                   }
                   
