@@ -424,6 +424,24 @@
               }
           });
 
+          socket.on('playerShot', function(data) {
+              // Show muzzle flash for other players shooting
+              if (data.shooterId !== playerId && otherPlayerMeshes[data.shooterId]) {
+                  const playerMesh = otherPlayerMeshes[data.shooterId];
+                  const flash = new THREE.PointLight(0xffaa00, 2, 5);
+                  // Position flash at player's head level
+                  flash.position.set(
+                      playerMesh.position.x,
+                      playerMesh.position.y + 2.0,
+                      playerMesh.position.z
+                  );
+                  scene.add(flash);
+                  setTimeout(function() {
+                      scene.remove(flash);
+                  }, 50);
+              }
+          });
+
           socket.on('playerRespawned', function(data) {
               // Make sure we update the existing player, not create a new one
               if (data.id !== playerId) {

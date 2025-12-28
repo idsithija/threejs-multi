@@ -86,6 +86,12 @@ io.on('connection', (socket) => {
         const shooter = players[socket.id];
         const victim = players[data.targetId];
         
+        // Broadcast muzzle flash to all other players
+        socket.broadcast.emit('playerShot', {
+            shooterId: socket.id,
+            position: shooter ? shooter.position : null
+        });
+        
         if (shooter && victim && victim.health > 0) {
             const damage = 25; // 4 shots to kill
             victim.health -= damage;
