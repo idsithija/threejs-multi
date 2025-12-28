@@ -1287,10 +1287,13 @@
           isReloading = true;
           playReloadSound();
           
+          // Show reloading indicator
+          document.getElementById('ammo').textContent = 'RELOADING...';
+          
           setTimeout(function() {
               ammo = 30;
-              updateUI();
               isReloading = false;
+              updateUI();
           }, 1500); // 1.5 second reload time
       }
 
