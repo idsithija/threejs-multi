@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1v1 Arena Shooter</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+      }
+      #info {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 16px;
+        z-index: 100;
+      }
+      #leaderboard {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 100;
+        min-width: 200px;
+      }
+      #leaderboard h3 {
+        margin: 0 0 10px 0;
+        color: #4caf50;
+      }
+      .player-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 20px;
+        height: 20px;
+        border: 2px solid red;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 100;
+      }
+      #crosshair::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px;
+        height: 2px;
+        background: red;
+      }
+      #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 40px;
+        border-radius: 10px;
+        text-align: center;
+        display: none;
+        z-index: 200;
+      }
+      #gameOver h1 {
+        margin: 0 0 20px 0;
+        color: #4caf50;
+      }
+      #gameOver button {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 18px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+      #gameOverbutton:hover {
+        background: #45a049;
+      }
+      #startScreen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 40px;
+        border-radius: 10px;
+        text-align: center;
+        z-index: 200;
+      }
+      #startScreen h1 {
+        margin: 0 0 20px 0;
+        color: #4caf50;
+      }
+      #startScreen input {
+        padding: 10px;
+        font-size: 16px;
+        margin: 10px 0;
+        width: 200px;
+        border-radius: 5px;
+        border: none;
+      }
+      #startScreen button {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 18px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 20px;
+        display: block;
+        width: 100%;
+      }
+      #startScreen button:hover {
+        background: #45a049;
+      }
+      #connectionStatus {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-size: 12px;
+        z-index: 100;
+      }
+      .online {
+        color: #4caf50;
+      }
+      .offline {
+        color: #f44336;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="startScreen">
+      <h1>⚔️ 1v1 Arena Shooter</h1>
+      <p>Enter your name to join the arena!</p>
+      <input
+        type="text"
+        id="playerName"
+        placeholder="Your Name"
+        maxlength="15"
+      />
+      <p style="font-size: 14px; margin-top: 20px">
+        WASD - Move | Mouse - Look | Click - Shoot | R - Reload
+      </p>
+      <button onclick="joinGame()">Join Game</button>
+    </div>
+    <div id="info" style="display: none">
+      <div>Health: <span id="health">100</span></div>
+      <div>Kills: <span id="kills">0</span></div>
+      <div>Deaths: <span id="deaths">0</span></div>
+      <div>Ammo: <span id="ammo">30</span></div>
+      <div style="margin-top: 10px; font-size: 12px">
+        WASD - Move | Mouse - Look | Click - Shoot | R - Reload
+      </div>
+    </div>
+    <div id="leaderboard" style="display: none">
+      <h3>🏆 Leaderboard</h3>
+      <div id="playerList"></div>
+    </div>
+    <div id="crosshair" style="display: none"></div>
+    <div id="gameOver">
+      <h1>Game Over!</h1>
+      <p>Your Final Score: <span id="finalScore">0</span></p>
+      <div id="finalLeaderboard"></div>
+      <button onclick="location.reload()">Play Again</button>
+    </div>
+    <div id="connectionStatus">
+      <span class="offline">⚫ Connecting...</span>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      function playShootSound() {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          oscillator. frequency.value = 200;
+          oscillator.type = 'sawtooth';
+          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.1);
+      }
+
+      function playHitSound() {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode. connect(audioContext.destination);
+          oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.2);
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext. currentTime + 0.2);
+      }
+
+      function playBullseyeSound() {
+          const osc1 = audioContext.createOscillator();
+          const gain1 = audioContext.createGain();
+          osc1.connect(gain1);
+          gain1.connect(audioContext.destination);
+          osc1.frequency.value = 1000;
+          osc1.type = 'sine';
+          gain1.gain.setValueAtTime(0.4, audioContext.currentTime);
+          gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+          osc1.start(audioContext.currentTime);
+          osc1.stop(audioContext.currentTime + 0.3);
+
+          const osc2 = audioContext.createOscillator();
+          const gain2 = audioContext.createGain();
+          osc2.connect(gain2);
+          gain2.connect(audioContext.destination);
+          osc2.frequency. value = 1500;
+          osc2.type = 'sine';
+          gain2.gain.setValueAtTime(0.3, audioContext.currentTime + 0.05);
+          gain2.gain. exponentialRampToValueAtTime(0.01, audioContext. currentTime + 0.35);
+          osc2.start(audioContext.currentTime + 0.05);
+          osc2.stop(audioContext. currentTime + 0.35);
+      }
+
+      function playReloadSound() {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode. connect(audioContext.destination);
+          oscillator.frequency.value = 100;
+          oscillator.type = 'square';
+          gainNode.gain. setValueAtTime(0.2, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext. currentTime + 0.15);
+
+          setTimeout(function() {
+              const osc2 = audioContext.createOscillator();
+              const gain2 = audioContext.createGain();
+              osc2.connect(gain2);
+              gain2.connect(audioContext.destination);
+              osc2.frequency. setValueAtTime(400, audioContext.currentTime);
+              osc2.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3);
+              osc2.type = 'sawtooth';
+              gain2.gain.setValueAtTime(0.15, audioContext.currentTime);
+              gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+              osc2.start(audioContext.currentTime);
+              osc2.stop(audioContext.currentTime + 0.3);
+          }, 100);
+      }
+
+      function playEmptyClickSound() {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          oscillator.frequency.value = 150;
+          oscillator.type = 'square';
+          gainNode.gain. setValueAtTime(0.1, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext. currentTime + 0.05);
+      }
+
+      let socket = null;
+      let isOnline = false;
+      let playerName = '';
+      let playerId = null;
+      let health = 100;
+      let kills = 0;
+      let deaths = 0;
+      let ammo = 30;
+      let gameActive = false;
+      let players = {};
+      let otherPlayerMeshes = {};
+      let isDead = false;
+      let respawnTimer = null;
+
+      const SERVER_URL = window.location.origin;
+      try {
+          socket = io(SERVER_URL, {
+              reconnection: true,
+              reconnectionDelay: 1000,
+              reconnectionAttempts: 5
+          });
+
+          socket.on('connect', function() {
+              isOnline = true;
+              document.getElementById('connectionStatus').innerHTML = '<span class="online">🟢 Online</span>';
+          });
+
+          socket.on('disconnect', function() {
+              isOnline = false;
+              document.getElementById('connectionStatus').innerHTML = '<span class="offline">⚫ Disconnected</span>';
+          });
+
+          socket.on('playerJoined', function(data) {
+              players = data.players;
+              // Create meshes for any new players we don't have yet
+              for (let id in players) {
+                  if (id !== playerId && !otherPlayerMeshes[id]) {
+                      otherPlayerMeshes[id] = createOtherPlayerMesh(players[id]);
+                      otherPlayerMeshes[id].position.set(
+                          players[id].position.x,
+                          players[id].position.y,
+                          players[id].position.z
+                      );
+                      scene.add(otherPlayerMeshes[id]);
+                  }
+              }
+              updateLeaderboard();
+          });
+
+          socket.on('playerLeft', function(data) {
+              players = data.players;
+              if (otherPlayerMeshes[data. playerId]) {
+                  scene.remove(otherPlayerMeshes[data.playerId]);
+                  delete otherPlayerMeshes[data.playerId];
+              }
+              updateLeaderboard();
+          });
+
+          socket.on('statsUpdate', function(data) {
+              players = data.players;
+              updateLeaderboard();
+          });
+
+          socket.on('playerHit', function(data) {
+              if (data.victimId === playerId) {
+                  health = data.health;
+                  updateUI();
+                  if (health <= 0) {
+                      die();
+                  }
+              }
+          });
+
+          socket.on('playerRespawned', function(data) {
+              updateOtherPlayer(data);
+          });
+
+          socket.on('forceRespawn', function(data) {
+              // Force respawn if we're stuck dead (inactive tab)
+              if (isDead) {
+                  const deathMsg = document.getElementById('deathMessage');
+                  if (deathMsg) {
+                      document.body.removeChild(deathMsg);
+                  }
+                  
+                  isDead = false;
+                  health = 100;
+                  ammo = 30;
+                  camera.position.set(data.position.x, data.position.y, data.position.z);
+                  updateUI();
+              }
+          });
+
+          socket.on('playerMoved', function(data) {
+              if (data.id !== playerId) {
+                  updateOtherPlayer(data);
+              }
+          });
+
+          socket.on('maxPlayersReached', function() {
+              alert('Arena is full! Maximum 2 players allowed.');
+              location.reload();
+          });
+
+      } catch (e) {
+          console.log('Running in offline mode');
+          isOnline = false;
+          document.getElementById('connectionStatus').innerHTML = '<span class="offline">⚫ Offline Mode</span>';
+      }
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87CEEB);
+      scene.fog = new THREE.Fog(0x87CEEB, 0, 100);
+
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 1.6, 5);
+
+      const renderer = new THREE.WebGLRenderer({ antialias:  true });
+      renderer.setSize(window.innerWidth, window. innerHeight);
+      renderer.shadowMap.enabled = true;
+      document.body.appendChild(renderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      sunLight.position.set(10, 20, 10);
+      sunLight.castShadow = true;
+      sunLight.shadow.camera.left = -50;
+      sunLight.shadow. camera.right = 50;
+      sunLight.shadow.camera. top = 50;
+      sunLight.shadow.camera.bottom = -50;
+      scene.add(sunLight);
+
+      const groundGeometry = new THREE.PlaneGeometry(40, 40);
+      const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Arena walls
+      const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, transparent: true, opacity: 0.7 });
+      const wallHeight = 3;
+      const arenaSize = 20;
+      
+      // North wall
+      const northWall = new THREE.Mesh(new THREE.BoxGeometry(arenaSize * 2, wallHeight, 0.5), wallMaterial);
+      northWall.position.set(0, wallHeight / 2, -arenaSize);
+      northWall.castShadow = true;
+      scene.add(northWall);
+      
+      // South wall
+      const southWall = new THREE.Mesh(new THREE.BoxGeometry(arenaSize * 2, wallHeight, 0.5), wallMaterial);
+      southWall.position.set(0, wallHeight / 2, arenaSize);
+      southWall.castShadow = true;
+      scene.add(southWall);
+      
+      // East wall
+      const eastWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, wallHeight, arenaSize * 2), wallMaterial);
+      eastWall.position.set(arenaSize, wallHeight / 2, 0);
+      eastWall.castShadow = true;
+      scene.add(eastWall);
+      
+      // West wall
+      const westWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, wallHeight, arenaSize * 2), wallMaterial);
+      westWall.position.set(-arenaSize, wallHeight / 2, 0);
+      westWall.castShadow = true;
+      scene.add(westWall);
+
+      // Remove target system for PvP arena
+
+      function createOtherPlayerMesh(playerData) {
+          const group = new THREE.Group();
+
+          // Body (cylinder)
+          const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8);
+          const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+          const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+          body.position.y = 1.2;
+          body.castShadow = true;
+          group.add(body);
+          group.userData.body = body;
+
+          // Head (sphere)
+          const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+          const headMaterial = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+          const head = new THREE.Mesh(headGeometry, headMaterial);
+          head.position.y = 2;
+          head.castShadow = true;
+          group.add(head);
+
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = 256;
+          canvas.height = 64;
+          context.fillStyle = 'rgba(0,0,0,0.7)';
+          context.fillRect(0, 0, 256, 64);
+          context.fillStyle = 'white';
+          context.font = 'bold 32px Arial';
+          context.textAlign = 'center';
+          context.fillText(playerData.name, 128, 42);
+
+          const texture = new THREE.CanvasTexture(canvas);
+          const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+          const sprite = new THREE.Sprite(spriteMaterial);
+          sprite.position.y = 2.5;
+          sprite.scale.set(2, 0.5, 1);
+          group.add(sprite);
+          group.userData.nameSprite = sprite;
+
+          // Health bar
+          const healthBarBg = new THREE.Mesh(
+              new THREE.PlaneGeometry(1, 0.1),
+              new THREE.MeshBasicMaterial({ color: 0x000000 })
+          );
+          healthBarBg.position.y = 2.2;
+          group.add(healthBarBg);
+
+          const healthBar = new THREE.Mesh(
+              new THREE.PlaneGeometry(1, 0.08),
+              new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+          );
+          healthBar.position.set(0, 2.2, 0.01);
+          group.add(healthBar);
+          group.userData.healthBar = healthBar;
+
+          return group;
+      }
+
+      function updateOtherPlayer(data) {
+          if (!otherPlayerMeshes[data.id]) {
+              otherPlayerMeshes[data.id] = createOtherPlayerMesh(data);
+              scene.add(otherPlayerMeshes[data.id]);
+          }
+
+          const playerMesh = otherPlayerMeshes[data.id];
+          playerMesh.position.set(data.position.x, data.position.y, data.position.z);
+          if (data.rotation && data.rotation.y !== undefined) {
+              playerMesh.rotation.y = data.rotation.y;
+          }
+
+          // Update health bar
+          if (data.health !== undefined && playerMesh.userData.healthBar) {
+              const healthPercent = data.health / 100;
+              playerMesh.userData.healthBar.scale.x = healthPercent;
+              playerMesh.userData.healthBar.position.x = -(1 - healthPercent) / 2;
+              
+              // Color based on health
+              if (healthPercent > 0.6) {
+                  playerMesh.userData.healthBar.material.color.setHex(0x00ff00);
+              } else if (healthPercent > 0.3) {
+                  playerMesh.userData.healthBar.material.color.setHex(0xffff00);
+              } else {
+                  playerMesh.userData.healthBar.material.color.setHex(0xff0000);
+              }
+          }
+
+          // Make sprite and health bar face camera
+          if (playerMesh.userData.nameSprite) {
+              playerMesh.userData.nameSprite.lookAt(camera.position);
+          }
+          if (playerMesh.userData.healthBar) {
+              playerMesh.userData.healthBar.lookAt(camera.position);
+              playerMesh.children.find(c => c.material && c.material.color.getHex() === 0x000000).lookAt(camera.position);
+          }
+      }
+
+      // No targets in PvP arena
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(0, 0);
+
+      const keys = {};
+      const moveSpeed = 0.1;
+
+      document.addEventListener('keydown', function(e) {
+          keys[e.key. toLowerCase()] = true;
+          if (e.key.toLowerCase() === 'r' && gameActive) {
+              if (ammo < 30) {
+                  ammo = 30;
+                  updateUI();
+                  playReloadSound();
+              }
+          }
+      });
+
+      document.addEventListener('keyup', function(e) {
+          keys[e.key.toLowerCase()] = false;
+      });
+
+      let yaw = 0;
+      let pitch = 0;
+
+      document.addEventListener('click', function() {
+          if (gameActive) {
+              document.body.requestPointerLock();
+              shoot();
+          }
+      });
+
+      document.addEventListener('mousemove', function(e) {
+          if (document.pointerLockElement === document.body) {
+              yaw -= e.movementX * 0.002;
+              pitch -= e.movementY * 0.002;
+              pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+          }
+      });
+
+      function shoot() {
+          if (!gameActive || isDead) return;
+
+          if (ammo <= 0) {
+              playEmptyClickSound();
+              return;
+          }
+
+          ammo--;
+          updateUI();
+          playShootSound();
+
+          const flash = new THREE.PointLight(0xffaa00, 2, 5);
+          flash.position.copy(camera.position);
+          scene.add(flash);
+          setTimeout(function() {
+              scene.remove(flash);
+          }, 50);
+
+          raycaster.setFromCamera(mouse, camera);
+          
+          // Check for hits on other players
+          const otherPlayerObjects = Object.values(otherPlayerMeshes).map(p => p.children).flat();
+          const intersects = raycaster.intersectObjects(otherPlayerObjects, false);
+
+          if (intersects.length > 0) {
+              // Find which player was hit
+              for (let targetId in otherPlayerMeshes) {
+                  if (otherPlayerMeshes[targetId].children.includes(intersects[0].object)) {
+                      playHitSound();
+                      
+                      if (isOnline && socket) {
+                          socket.emit('shootPlayer', { targetId: targetId });
+                      }
+                      
+                      // Visual feedback
+                      if (intersects[0].object.material) {
+                          const originalColor = intersects[0].object.material.color.clone();
+                          intersects[0].object.material.color.setHex(0xffffff);
+                          setTimeout(function() {
+                              if (intersects[0].object.material) {
+                                  intersects[0].object.material.color.copy(originalColor);
+                              }
+                          }, 100);
+                      }
+                      break;
+                  }
+              }
+          }
+      }
+
+      function die() {
+          isDead = true;
+          health = 0;
+          deaths++;
+          updateUI();
+          
+          // Disable controls
+          document.exitPointerLock();
+          
+          // Remove any existing death message
+          const existingMsg = document.getElementById('deathMessage');
+          if (existingMsg) {
+              document.body.removeChild(existingMsg);
+          }
+          
+          // Show death message
+          const deathMsg = document.createElement('div');
+          deathMsg.id = 'deathMessage';
+          deathMsg.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#ff0000;padding:30px;border-radius:10px;font-size:24px;z-index:150;';
+          deathMsg.textContent = 'You Died! Respawning in 3...';
+          document.body.appendChild(deathMsg);
+          
+          let countdown = 3;
+          const countdownInterval = setInterval(() => {
+              countdown--;
+              if (countdown > 0) {
+                  deathMsg.textContent = 'You Died! Respawning in ' + countdown + '...';
+              } else {
+                  clearInterval(countdownInterval);
+                  const msg = document.getElementById('deathMessage');
+                  if (msg) {
+                      document.body.removeChild(msg);
+                  }
+                  respawn();
+              }
+          }, 1000);
+      }
+
+      function respawn() {
+          isDead = false;
+          health = 100;
+          ammo = 30;
+          
+          // Random spawn position within arena
+          const spawnX = (Math.random() - 0.5) * 30;
+          const spawnZ = (Math.random() - 0.5) * 30;
+          camera.position.set(spawnX, 1.6, spawnZ);
+          
+          // Random rotation
+          yaw = Math.random() * Math.PI * 2;
+          
+          updateUI();
+          
+          if (isOnline && socket) {
+              socket.emit('respawn', {
+                  position: camera.position,
+                  health: health,
+                  rotation: { y: yaw }
+              });
+          }
+      }
+
+      function updateUI() {
+          document.getElementById('health').textContent = health;
+          document.getElementById('kills').textContent = kills;
+          document.getElementById('deaths').textContent = deaths;
+          document.getElementById('ammo').textContent = ammo;
+      }
+
+      function updateLeaderboard() {
+          const playerList = document.getElementById('playerList');
+          const sortedPlayers = Object.values(players).sort(function(a, b) {
+              return b.kills - a.kills;
+          });
+
+          playerList.innerHTML = sortedPlayers.map(function(player) {
+              return '<div class="player-item"><span>' + player.name + '</span><span>' + player.kills + ' / ' + player.deaths + '</span></div>';
+          }).join('');
+      }
+
+      function joinGame() {
+          const nameInput = document.getElementById('playerName');
+          playerName = nameInput.value.trim() || 'Player' + Math.floor(Math.random() * 1000);
+
+          document.getElementById('startScreen').style.display = 'none';
+          document.getElementById('info').style.display = 'block';
+          document.getElementById('leaderboard').style.display = 'block';
+          document.getElementById('crosshair').style.display = 'block';
+
+          gameActive = true;
+
+          if (isOnline && socket) {
+              socket.emit('joinGame', { name: playerName });
+              socket.on('playerInfo', function(data) {
+                  playerId = data.id;
+                  players = data.players;
+                  
+                  // Create meshes for all existing players except ourselves
+                  for (let id in players) {
+                      if (id !== playerId) {
+                          otherPlayerMeshes[id] = createOtherPlayerMesh(players[id]);
+                          otherPlayerMeshes[id].position.set(
+                              players[id].position.x,
+                              players[id].position.y,
+                              players[id].position.z
+                          );
+                          scene.add(otherPlayerMeshes[id]);
+                      }
+                  }
+                  
+                  updateLeaderboard();
+              });
+          } else {
+              playerId = 'local';
+              players[playerId] = { name: playerName, kills: 0, deaths: 0, health: 100 };
+              updateLeaderboard();
+          }
+      }
+
+      // No timer needed for arena mode
+
+      let lastPositionUpdate = 0;
+      function animate() {
+          requestAnimationFrame(animate);
+
+          if (gameActive) {
+              const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera. quaternion);
+              const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
+              forward.y = 0;
+              right.y = 0;
+              forward.normalize();
+              right.normalize();
+
+              if (!isDead) {
+                  if (keys['w']) camera.position.add(forward.multiplyScalar(moveSpeed));
+                  if (keys['s']) camera.position.add(forward.multiplyScalar(-moveSpeed));
+                  if (keys['a']) camera.position.add(right.multiplyScalar(-moveSpeed));
+                  if (keys['d']) camera.position.add(right.multiplyScalar(moveSpeed));
+
+                  // Arena boundaries
+                  camera.position.x = Math.max(-19, Math.min(19, camera.position.x));
+                  camera.position.z = Math.max(-19, Math.min(19, camera.position.z));
+              }
+              
+              camera.position.y = 1.6;
+
+              camera.rotation.order = 'YXZ';
+              camera.rotation.y = yaw;
+              camera.rotation. x = pitch;
+
+              const now = Date.now();
+              if (isOnline && socket && now - lastPositionUpdate > 50) {
+                  socket.emit('playerMove', {
+                      position: camera.position,
+                      rotation: { y: yaw },
+                      health: health
+                  });
+                  lastPositionUpdate = now;
+              }
+          }
+
+          renderer.render(scene, camera);
+      }
+
+      window.addEventListener('resize', function() {
+          camera.aspect = window. innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      animate();
+    </script>
+  </body>
+</html>
