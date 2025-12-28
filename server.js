@@ -286,13 +286,22 @@ io.on('connection', (socket) => {
 
     socket.on('respawn', (data) => {
         if (players[socket.id]) {
-            // Server generates spawn position
-            const spawnX = (Math.random() - 0.5) * 30;
-            const spawnZ = (Math.random() - 0.5) * 30;
-            const spawnRotation = Math.random() * Math.PI * 2;
+            // Server generates spawn position in open areas away from building
+            const spawnPoints = [
+                { x: -15, z: -15 },
+                { x: 15, z: -15 },
+                { x: -15, z: 15 },
+                { x: 15, z: 15 },
+                { x: -12, z: 0 },
+                { x: 12, z: 0 },
+                { x: 0, z: -12 },
+                { x: 0, z: 12 }
+            ];
+            const spawn = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+            const spawnRotation = Math.atan2(-spawn.x, -spawn.z); // Face toward center
             
             players[socket.id].health = 100;
-            players[socket.id].position = { x: spawnX, y: 1.6, z: spawnZ };
+            players[socket.id].position = { x: spawn.x, y: 1.6, z: spawn.z };
             players[socket.id].rotation = { y: spawnRotation };
             
             // Send spawn position back to the respawning player
