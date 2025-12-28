@@ -1291,8 +1291,13 @@
 
       document.addEventListener('mousemove', function(e) {
           if (document.pointerLockElement === document.body) {
-              yaw -= e.movementX * 0.002;
-              pitch -= e.movementY * 0.002;
+              // Clamp movement values to prevent random swings from large delta spikes
+              const maxDelta = 100; // Maximum pixels per frame
+              const clampedX = Math.max(-maxDelta, Math.min(maxDelta, e.movementX));
+              const clampedY = Math.max(-maxDelta, Math.min(maxDelta, e.movementY));
+              
+              yaw -= clampedX * 0.002;
+              pitch -= clampedY * 0.002;
               pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
           }
       });
