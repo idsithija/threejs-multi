@@ -1314,6 +1314,8 @@
           if (!gameActive || isDead || isReloading) return;
 
           if (ammo <= 0) {
+              // Auto-reload when clicking with empty magazine
+              reload();
               playEmptyClickSound();
               return;
           }
@@ -1321,11 +1323,6 @@
           ammo--;
           updateUI();
           playShootSound();
-          
-          // Auto-reload immediately when ammo reaches 0
-          if (ammo === 0) {
-              reload();
-          }
 
           const flash = new THREE.PointLight(0xffaa00, 2, 5);
           flash.position.copy(camera.position);
