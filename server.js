@@ -1,4 +1,10 @@
+require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const User = require('./models/User');
+
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
@@ -10,10 +16,142 @@ const io = require('socket.io')(http, {
 
 const PORT = process.env.PORT || 3000;
 
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shooting-game', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log('✓ MongoDB connected');
+}).catch(err => {
+    console.log('MongoDB connection error:', err);
+});
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/shooting-game'
+    }),
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
+    }
+}));
+
 let players = {};
 const MAX_PLAYERS = 8;
 
 app.use(express.static('public'));
+
+// Auth Routes
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+
+        if (username.length < 3 || username.length > 15) {
+            return res.status(400).json({ error: 'Username must be 3-15 characters' });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+
+        // Check if user exists
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ error: 'Username already taken' });
+        }
+
+        // Create new user
+        const user = new User({ username, password });
+        await user.save();
+
+        // Set session
+        req.session.userId = user._id;
+        req.session.username = user.username;
+
+        res.json({ 
+            success: true,
+            userId: user._id,
+            username: user.username,
+            stats: user.stats
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Server error during registration' });
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+
+        // Find user
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        // Check password
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        // Set session
+        req.session.userId = user._id;
+        req.session.username = user.username;
+
+        res.json({ 
+            success: true,
+            userId: user._id,
+            username: user.username,
+            stats: user.stats
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Server error during login' });
+    }
+});
+
+app.post('/api/logout', (req, res) => {
+    req.session.destroy();
+    res.json({ success: true });
+});
+
+app.get('/api/user', (req, res) => {
+    if (req.session.userId) {
+        User.findById(req.session.userId).then(user => {
+            if (user) {
+                res.json({ 
+                    authenticated: true,
+                    userId: user._id,
+                    username: user.username,
+                    stats: user.stats
+                });
+            } else {
+                res.json({ authenticated: false });
+            }
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/multiplayer-shooting-game.html');
@@ -45,6 +183,7 @@ io.on('connection', (socket) => {
         players[socket.id] = {
             id: socket.id,
             name: data.name,
+            userId: data.userId || null, // Store user ID for database updates
             kills: 0,
             deaths: 0,
             health: 100,
@@ -193,8 +332,25 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         console.log('Player disconnected:', socket.id);
+        
+        // Save stats to database if authenticated
+        if (players[socket.id] && players[socket.id].userId) {
+            try {
+                await User.findByIdAndUpdate(players[socket.id].userId, {
+                    $inc: {
+                        'stats.kills': players[socket.id].kills || 0,
+                        'stats.deaths': players[socket.id].deaths || 0,
+                        'stats.gamesPlayed': 1
+                    }
+                });
+                console.log(`Saved stats for user: ${players[socket.id].name}`);
+            } catch (error) {
+                console.error('Error saving stats:', error);
+            }
+        }
+        
         delete players[socket.id];
         
         io.emit('playerLeft', {
