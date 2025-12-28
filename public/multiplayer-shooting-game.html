@@ -495,6 +495,29 @@
           head.castShadow = true;
           group.add(head);
 
+          // Eyes
+          const eyeGeometry = new THREE.SphereGeometry(0.06, 6, 6);
+          const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+          const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+          
+          // Left eye
+          const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+          leftEye.position.set(-0.1, 2.05, 0.2);
+          group.add(leftEye);
+          
+          const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), pupilMaterial);
+          leftPupil.position.set(-0.1, 2.05, 0.25);
+          group.add(leftPupil);
+          
+          // Right eye
+          const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+          rightEye.position.set(0.1, 2.05, 0.2);
+          group.add(rightEye);
+          
+          const rightPupil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), pupilMaterial);
+          rightPupil.position.set(0.1, 2.05, 0.25);
+          group.add(rightPupil);
+
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           canvas.width = 256;
@@ -526,9 +549,14 @@
           healthBgCtx.strokeRect(1, 1, 126, 14);
           
           const healthBarBgTexture = new THREE.CanvasTexture(healthBarBgCanvas);
-          const healthBarBgSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: healthBarBgTexture }));
+          const healthBarBgSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+              map: healthBarBgTexture,
+              depthTest: false,
+              depthWrite: false
+          }));
           healthBarBgSprite.position.set(0, 2.1, 0);
           healthBarBgSprite.scale.set(1, 0.12, 1);
+          healthBarBgSprite.renderOrder = 1;
           group.add(healthBarBgSprite);
           group.userData.healthBarBg = healthBarBgSprite;
 
@@ -540,9 +568,14 @@
           group.userData.healthBarContext = healthBarCanvas.getContext('2d');
           
           const healthBarTexture = new THREE.CanvasTexture(healthBarCanvas);
-          const healthBarSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: healthBarTexture }));
+          const healthBarSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+              map: healthBarTexture,
+              depthTest: false,
+              depthWrite: false
+          }));
           healthBarSprite.position.set(0, 2.1, 0.01);
           healthBarSprite.scale.set(0.94, 0.09, 1);
+          healthBarSprite.renderOrder = 2;
           group.add(healthBarSprite);
           group.userData.healthBar = healthBarSprite;
           group.userData.healthBarTexture = healthBarTexture;
