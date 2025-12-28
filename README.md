@@ -1,13 +1,13 @@
-# ⚔️ 1v1 Arena Shooter
+# ⚔️ Arena Shooter (Up to 8 Players)
 
-A real-time multiplayer first-person shooter arena built with Three.js and Socket.io. Battle against another player in an enclosed arena!
+A real-time multiplayer first-person shooter arena built with Three.js and Socket.io. Battle against up to 7 other players in an enclosed arena!
 
 ![Game Screenshot](https://img.shields.io/badge/Three.js-r128-green) ![Socket.io](https://img.shields.io/badge/Socket.io-4.5.4-blue) ![Node.js](https://img.shields.io/badge/Node.js-14%2B-brightgreen)
 
 ## 🎮 Features
 
 ### Gameplay
-- ⚔️ **1v1 PvP Combat** - Battle against one other player
+- ⚔️ **Multiplayer PvP Combat** - Battle against up to 7 other players (8 players max)
 - 🏟️ **Enclosed Arena** - 40x40 unit arena with walls
 - ❤️ **Health System** - 100 HP, 25 damage per hit (4 shots to kill)
 - 💀 **Death & Respawn** - 3-second respawn after death
@@ -16,7 +16,7 @@ A real-time multiplayer first-person shooter arena built with Three.js and Socke
 - 🔊 **Sound Effects** - Dynamic audio using Web Audio API
 
 ### Multiplayer
-- 👥 **Max 2 Players** - True 1v1 battles
+- 👥 **Max 8 Players** - Battle royale style combat
 - 🎯 **Real-time Combat** - See opponent's health and position
 - 💚 **Health Bars** - Visual health indicators above players
 - 🏆 **Live Scoreboard** - Track kills and deaths
@@ -85,7 +85,7 @@ Deploy your game for free so friends can play with you from anywhere!
 
 5. **Share with friends**:
    - Send them your Render URL
-   - Maximum 2 players can play at once (1v1)
+   - Maximum 8 players can play at once
    - Everyone clicks to start playing!
 
 ### ⚠️ Free Tier Notes:
@@ -97,7 +97,7 @@ Deploy your game for free so friends can play with you from anywhere!
 ## 🎯 How to Play
 
 1. Enter your name on the start screen
-2. Wait for another player to join (max 2 players)
+2. Wait for other players to join (max 8 players)
 3. Use WASD to move, mouse to aim
 4. Click to shoot your opponent
 5. Hit them 4 times to get a kill

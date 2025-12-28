@@ -11,7 +11,7 @@ const io = require('socket.io')(http, {
 const PORT = process.env.PORT || 3000;
 
 let players = {};
-const MAX_PLAYERS = 2;
+const MAX_PLAYERS = 8;
 
 app.use(express.static('public'));
 
