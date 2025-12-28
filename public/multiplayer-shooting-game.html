@@ -953,15 +953,56 @@
       });
       
       // Roof over the building
-      const roof = new THREE.Mesh(
+      const buildingRoof = new THREE.Mesh(
           new THREE.BoxGeometry(10.6, 0.3, 10.6),
           brickMaterial
       );
-      roof.position.set(0, 2.65, 0);
-      roof.receiveShadow = true;
-      roof.castShadow = true;
-      scene.add(roof);
-      arenaWalls.push(roof);
+      buildingRoof.position.set(0, 2.65, 0);
+      buildingRoof.receiveShadow = true;
+      buildingRoof.castShadow = true;
+      scene.add(buildingRoof);
+      arenaWalls.push(buildingRoof);
+      
+      // Main arena roof covering entire area
+      const metalRoofTexture = createStripedTexture('#556677', '#445566');
+      const roofMaterial = new THREE.MeshStandardMaterial({ 
+          map: metalRoofTexture,
+          flatShading: true,
+          roughness: 0.5,
+          metalness: 0.6
+      });
+      const mainRoof = new THREE.Mesh(
+          new THREE.PlaneGeometry(40, 40, 8, 8),
+          roofMaterial
+      );
+      mainRoof.rotation.x = Math.PI / 2; // Rotate to be horizontal
+      mainRoof.position.set(0, 4, 0);
+      mainRoof.receiveShadow = true;
+      scene.add(mainRoof);
+      
+      // Support pillars for the roof
+      const pillarPositions = [
+          { x: -18, z: -18 },
+          { x: 18, z: -18 },
+          { x: -18, z: 18 },
+          { x: 18, z: 18 },
+          { x: -18, z: 0 },
+          { x: 18, z: 0 },
+          { x: 0, z: -18 },
+          { x: 0, z: 18 }
+      ];
+      
+      pillarPositions.forEach(pos => {
+          const pillar = new THREE.Mesh(
+              new THREE.BoxGeometry(0.5, 4, 0.5),
+              concreteMaterial
+          );
+          pillar.position.set(pos.x, 2, pos.z);
+          pillar.castShadow = true;
+          pillar.receiveShadow = true;
+          scene.add(pillar);
+          coverObjects.push(pillar);
+      });
       
       // Doorways/Windows (low walls for cover)
       const windowCovers = [
