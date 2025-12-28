@@ -737,21 +737,21 @@
       }
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x87CEEB);
-      scene.fog = new THREE.Fog(0x87CEEB, 0, 100);
+      scene.background = new THREE.Color(0xFF6B9D);
+      scene.fog = new THREE.Fog(0xFF6B9D, 30, 80);
 
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 1.6, 5);
 
-      const renderer = new THREE.WebGLRenderer({ antialias:  true });
+      const renderer = new THREE.WebGLRenderer({ antialias: false }); // Disable antialiasing for low-poly look
       renderer.setSize(window.innerWidth, window. innerHeight);
       renderer.shadowMap.enabled = true;
       document.body.appendChild(renderer.domElement);
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      const ambientLight = new THREE.AmbientLight(0xFFE66D, 0.7);
       scene.add(ambientLight);
 
-      const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      const sunLight = new THREE.DirectionalLight(0xFFAA00, 1.2);
       sunLight.position.set(10, 20, 10);
       sunLight.castShadow = true;
       sunLight.shadow.camera.left = -50;
@@ -759,16 +759,33 @@
       sunLight.shadow.camera. top = 50;
       sunLight.shadow.camera.bottom = -50;
       scene.add(sunLight);
+      
+      // Add colorful accent lights
+      const light1 = new THREE.PointLight(0x00F5FF, 0.5, 30);
+      light1.position.set(-15, 5, -15);
+      scene.add(light1);
+      
+      const light2 = new THREE.PointLight(0xFF1744, 0.5, 30);
+      light2.position.set(15, 5, 15);
+      scene.add(light2);
 
-      const groundGeometry = new THREE.PlaneGeometry(40, 40);
-      const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+      const groundGeometry = new THREE.PlaneGeometry(40, 40, 8, 8);
+      const groundMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x00E676,
+          flatShading: true,
+          roughness: 0.8
+      });
       const ground = new THREE.Mesh(groundGeometry, groundMaterial);
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
       scene.add(ground);
 
       // Arena walls
-      const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, transparent: true, opacity: 0.7 });
+      const wallMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x7C4DFF,
+          flatShading: true,
+          roughness: 0.7
+      });
       const wallHeight = 3;
       const arenaSize = 20;
       
@@ -798,10 +815,13 @@
 
       // Cover objects (boxes and walls)
       const coverObjects = [];
-      const coverMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
+      const coverColors = [0xFF6F00, 0x00BCD4, 0xE91E63, 0xFFEB3B, 0x4CAF50];
       
       // Large center box
-      const centerBox = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 3), coverMaterial);
+      const centerBox = new THREE.Mesh(
+          new THREE.BoxGeometry(3, 2, 3),
+          new THREE.MeshStandardMaterial({ color: 0xFF1744, flatShading: true, roughness: 0.8 })
+      );
       centerBox.position.set(0, 1, 0);
       centerBox.castShadow = true;
       centerBox.receiveShadow = true;
@@ -815,8 +835,11 @@
           { x: -12, z: 12 },
           { x: 12, z: 12 }
       ];
-      corners.forEach(pos => {
-          const box = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 2), coverMaterial);
+      corners.forEach((pos, i) => {
+          const box = new THREE.Mesh(
+              new THREE.BoxGeometry(2, 1.5, 2),
+              new THREE.MeshStandardMaterial({ color: coverColors[i % coverColors.length], flatShading: true, roughness: 0.8 })
+          );
           box.position.set(pos.x, 0.75, pos.z);
           box.castShadow = true;
           box.receiveShadow = true;
@@ -831,10 +854,10 @@
           { x: 0, z: -8, width: 4, height: 1.8, depth: 0.5 },
           { x: 0, z: 8, width: 4, height: 1.8, depth: 0.5 }
       ];
-      wallCovers.forEach(wall => {
+      wallCovers.forEach((wall, i) => {
           const wallBox = new THREE.Mesh(
               new THREE.BoxGeometry(wall.width, wall.height, wall.depth),
-              new THREE.MeshStandardMaterial({ color: 0x8B7355 })
+              new THREE.MeshStandardMaterial({ color: 0x00E5FF, flatShading: true, roughness: 0.8 })
           );
           wallBox.position.set(wall.x, wall.height / 2, wall.z);
           wallBox.castShadow = true;
@@ -850,10 +873,10 @@
           { x: -5, z: 5, size: 1.2 },
           { x: 5, z: -5, size: 1.2 }
       ];
-      scatteredBoxes.forEach(box => {
+      scatteredBoxes.forEach((box, i) => {
           const mesh = new THREE.Mesh(
               new THREE.BoxGeometry(box.size, box.size, box.size),
-              coverMaterial
+              new THREE.MeshStandardMaterial({ color: coverColors[(i + 2) % coverColors.length], flatShading: true, roughness: 0.8 })
           );
           mesh.position.set(box.x, box.size / 2, box.z);
           mesh.castShadow = true;
@@ -875,8 +898,8 @@
           const group = new THREE.Group();
 
           // Body (cylinder)
-          const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8);
-          const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+          const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 6);
+          const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x00BCD4, flatShading: true });
           const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
           body.position.y = 1.2;
           body.castShadow = true;
@@ -884,17 +907,17 @@
           group.userData.body = body;
 
           // Head (sphere)
-          const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
-          const headMaterial = new THREE.MeshStandardMaterial({ color: 0xff3333 });
+          const headGeometry = new THREE.SphereGeometry(0.25, 6, 6);
+          const headMaterial = new THREE.MeshStandardMaterial({ color: 0xFFC107, flatShading: true });
           const head = new THREE.Mesh(headGeometry, headMaterial);
           head.position.y = 2;
           head.castShadow = true;
           group.add(head);
 
           // Eyes
-          const eyeGeometry = new THREE.SphereGeometry(0.06, 6, 6);
-          const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-          const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+          const eyeGeometry = new THREE.SphereGeometry(0.06, 4, 4);
+          const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true });
+          const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000, flatShading: true });
           
           // Left eye (positioned forward on Z axis)
           const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
