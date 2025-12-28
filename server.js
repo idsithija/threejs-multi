@@ -2,7 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+// Temporarily disabled MongoStore - using MemoryStore for development
+// const MongoStore = require('connect-mongo');
 const User = require('./models/User');
 
 const app = express();
@@ -16,28 +17,24 @@ const io = require('socket.io')(http, {
 
 const PORT = process.env.PORT || 3000;
 
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shooting-game', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shooting-game').then(() => {
     console.log('✓ MongoDB connected');
 }).catch(err => {
     console.log('MongoDB connection error:', err);
 });
-
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/shooting-game'
-    }),
+    // Using MemoryStore for now - sessions won't persist across restarts
+    // TODO: Re-enable MongoStore for production
     cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
     }
