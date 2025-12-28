@@ -334,6 +334,13 @@
       let otherPlayerMeshes = {};
       let isDead = false;
       let respawnTimer = null;
+      
+      // Jump variables
+      let isJumping = false;
+      let verticalVelocity = 0;
+      const gravity = -0.015;
+      const jumpStrength = 0.3;
+      const groundLevel = 1.6;
 
       const SERVER_URL = window.location.origin;
       try {
@@ -664,8 +671,10 @@
 
           const playerMesh = otherPlayerMeshes[data.id];
           
-          // Update position (data.position.y is camera height 1.6, so offset mesh to ground)
-          playerMesh.position.set(data.position.x, 0, data.position.z);
+          // Update position - use data.position.y for jumping animation
+          // Offset by -1.6 so when camera is at 1.6 (ground), mesh is at y=0
+          const meshY = data.position.y - 1.6;
+          playerMesh.position.set(data.position.x, meshY, data.position.z);
           
           // Update rotation if provided
           if (data.rotation && data.rotation.y !== undefined) {
@@ -700,6 +709,13 @@
       document.addEventListener('keydown', function(e) {
           if (!e.key) return;
           keys[e.key.toLowerCase()] = true;
+          
+          // Jump with Space bar
+          if (e.key === ' ' && gameActive && !isDead && !isJumping) {
+              isJumping = true;
+              verticalVelocity = jumpStrength;
+          }
+          
           if (e.key.toLowerCase() === 'r' && gameActive) {
               if (ammo < 30) {
                   ammo = 30;
@@ -935,18 +951,32 @@
                   camera.position.z = Math.max(-19, Math.min(19, camera.position.z));
               }
               
-              camera.position.y = 1.6;
+              // Jump physics
+              if (isJumping) {
+                  verticalVelocity += gravity;
+                  camera.position.y += verticalVelocity;
+                  
+                  // Land on ground
+                  if (camera.position.y <= groundLevel) {
+                      camera.position.y = groundLevel;
+                      isJumping = false;
+                      verticalVelocity = 0;
+                  }
+              } else {
+                  camera.position.y = groundLevel;
+              }
 
               camera.rotation.order = 'YXZ';
               camera.rotation.y = yaw;
-              camera.rotation. x = pitch;
+              camera.rotation.x = pitch;
 
               const now = Date.now();
               if (isOnline && socket && now - lastPositionUpdate > 50) {
                   socket.emit('playerMove', {
                       position: camera.position,
                       rotation: { y: yaw },
-                      health: health
+                      health: health,
+                      isJumping: isJumping
                   });
                   lastPositionUpdate = now;
               }
