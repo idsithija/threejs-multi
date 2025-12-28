@@ -133,7 +133,8 @@ io.on('connection', (socket) => {
                 players[socket.id].rotation = data.rotation;
             }
             
-            io.emit('playerRespawned', {
+            // Only broadcast to other players, not everyone
+            socket.broadcast.emit('playerRespawned', {
                 id: socket.id,
                 name: players[socket.id].name,
                 position: data.position,
@@ -141,7 +142,7 @@ io.on('connection', (socket) => {
                 rotation: players[socket.id].rotation
             });
             
-            // Also update stats to ensure consistency
+            // Update stats for everyone
             io.emit('statsUpdate', {
                 players: players
             });

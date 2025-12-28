@@ -362,7 +362,10 @@
           });
 
           socket.on('playerRespawned', function(data) {
-              updateOtherPlayer(data);
+              // Make sure we update the existing player, not create a new one
+              if (data.id !== playerId) {
+                  updateOtherPlayer(data);
+              }
           });
 
           socket.on('forceRespawn', function(data) {
@@ -519,20 +522,26 @@
       }
 
       function updateOtherPlayer(data) {
+          // Ensure we have a valid mesh, create if needed
           if (!otherPlayerMeshes[data.id]) {
               otherPlayerMeshes[data.id] = createOtherPlayerMesh(data);
               scene.add(otherPlayerMeshes[data.id]);
+              console.log('Created new player mesh for:', data.id);
           }
 
           const playerMesh = otherPlayerMeshes[data.id];
+          
+          // Update position
           playerMesh.position.set(data.position.x, data.position.y, data.position.z);
+          
+          // Update rotation if provided
           if (data.rotation && data.rotation.y !== undefined) {
               playerMesh.rotation.y = data.rotation.y;
           }
 
           // Update health bar
           if (data.health !== undefined && playerMesh.userData.healthBar) {
-              const healthPercent = data.health / 100;
+              const healthPercent = Math.max(0, Math.min(1, data.health / 100));
               playerMesh.userData.healthBar.scale.x = healthPercent;
               playerMesh.userData.healthBar.position.x = -(1 - healthPercent) / 2;
               
@@ -552,7 +561,10 @@
           }
           if (playerMesh.userData.healthBar) {
               playerMesh.userData.healthBar.lookAt(camera.position);
-              playerMesh.children.find(c => c.material && c.material.color.getHex() === 0x000000).lookAt(camera.position);
+              const healthBarBg = playerMesh.children.find(c => c.material && c.material.color && c.material.color.getHex() === 0x000000);
+              if (healthBarBg) {
+                  healthBarBg.lookAt(camera.position);
+              }
           }
       }
 
