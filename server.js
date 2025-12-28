@@ -97,6 +97,11 @@ io.on('connection', (socket) => {
                 
                 console.log(`${shooter.name} killed ${victim.name}`);
                 
+                // Notify all players that victim died (to hide mesh)
+                io.emit('playerDied', {
+                    victimId: data.targetId
+                });
+                
                 // Auto-respawn after 3 seconds (in case client is inactive)
                 setTimeout(() => {
                     if (players[data.targetId] && players[data.targetId].health === 0) {

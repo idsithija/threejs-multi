@@ -417,9 +417,20 @@
               }
           });
 
+          socket.on('playerDied', function(data) {
+              // Hide the killed player's mesh
+              if (otherPlayerMeshes[data.victimId]) {
+                  otherPlayerMeshes[data.victimId].visible = false;
+              }
+          });
+
           socket.on('playerRespawned', function(data) {
               // Make sure we update the existing player, not create a new one
               if (data.id !== playerId) {
+                  // Show and update the respawned player
+                  if (otherPlayerMeshes[data.id]) {
+                      otherPlayerMeshes[data.id].visible = true;
+                  }
                   updateOtherPlayer(data);
               } else {
                   // Update our own position from server (for respawn)
@@ -747,6 +758,9 @@
           }
 
           const playerMesh = otherPlayerMeshes[data.id];
+          
+          // Ensure mesh is visible
+          playerMesh.visible = true;
           
           // Update position - use data.position.y for jumping animation
           // Offset by -1.6 so when camera is at 1.6 (ground), mesh is at y=0
