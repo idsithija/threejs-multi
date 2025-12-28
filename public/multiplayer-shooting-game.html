@@ -517,6 +517,72 @@
       westWall.castShadow = true;
       scene.add(westWall);
 
+      // Cover objects (boxes and walls)
+      const coverObjects = [];
+      const coverMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
+      
+      // Large center box
+      const centerBox = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 3), coverMaterial);
+      centerBox.position.set(0, 1, 0);
+      centerBox.castShadow = true;
+      centerBox.receiveShadow = true;
+      scene.add(centerBox);
+      coverObjects.push(centerBox);
+      
+      // Corner boxes
+      const corners = [
+          { x: -12, z: -12 },
+          { x: 12, z: -12 },
+          { x: -12, z: 12 },
+          { x: 12, z: 12 }
+      ];
+      corners.forEach(pos => {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 2), coverMaterial);
+          box.position.set(pos.x, 0.75, pos.z);
+          box.castShadow = true;
+          box.receiveShadow = true;
+          scene.add(box);
+          coverObjects.push(box);
+      });
+      
+      // Small wall covers
+      const wallCovers = [
+          { x: -8, z: 0, width: 0.5, height: 1.8, depth: 4 },
+          { x: 8, z: 0, width: 0.5, height: 1.8, depth: 4 },
+          { x: 0, z: -8, width: 4, height: 1.8, depth: 0.5 },
+          { x: 0, z: 8, width: 4, height: 1.8, depth: 0.5 }
+      ];
+      wallCovers.forEach(wall => {
+          const wallBox = new THREE.Mesh(
+              new THREE.BoxGeometry(wall.width, wall.height, wall.depth),
+              new THREE.MeshStandardMaterial({ color: 0x8B7355 })
+          );
+          wallBox.position.set(wall.x, wall.height / 2, wall.z);
+          wallBox.castShadow = true;
+          wallBox.receiveShadow = true;
+          scene.add(wallBox);
+          coverObjects.push(wallBox);
+      });
+      
+      // Scattered boxes for tactical cover
+      const scatteredBoxes = [
+          { x: -5, z: -5, size: 1.5 },
+          { x: 5, z: 5, size: 1.5 },
+          { x: -5, z: 5, size: 1.2 },
+          { x: 5, z: -5, size: 1.2 }
+      ];
+      scatteredBoxes.forEach(box => {
+          const mesh = new THREE.Mesh(
+              new THREE.BoxGeometry(box.size, box.size, box.size),
+              coverMaterial
+          );
+          mesh.position.set(box.x, box.size / 2, box.z);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          scene.add(mesh);
+          coverObjects.push(mesh);
+      });
+
       // Remove target system for PvP arena
 
       function createOtherPlayerMesh(playerData) {
@@ -769,11 +835,18 @@
 
           raycaster.setFromCamera(mouse, camera);
           
-          // Check for hits on other players
+          // Check for hits on other players and cover
           const otherPlayerObjects = Object.values(otherPlayerMeshes).map(p => p.children).flat();
-          const intersects = raycaster.intersectObjects(otherPlayerObjects, false);
+          const allObjects = [...otherPlayerObjects, ...coverObjects];
+          const intersects = raycaster.intersectObjects(allObjects, false);
 
           if (intersects.length > 0) {
+              // Check if we hit cover first (cover blocks the shot)
+              if (coverObjects.includes(intersects[0].object)) {
+                  // Hit cover, bullet stopped
+                  return;
+              }
+              
               // Find which player was hit
               for (let targetId in otherPlayerMeshes) {
                   if (otherPlayerMeshes[targetId].children.includes(intersects[0].object)) {
@@ -949,6 +1022,38 @@
                   // Arena boundaries
                   camera.position.x = Math.max(-19, Math.min(19, camera.position.x));
                   camera.position.z = Math.max(-19, Math.min(19, camera.position.z));
+                  
+                  // Collision detection with cover objects
+                  const playerRadius = 0.5;
+                  for (let cover of coverObjects) {
+                      const box = new THREE.Box3().setFromObject(cover);
+                      const playerBox = new THREE.Box3(
+                          new THREE.Vector3(
+                              camera.position.x - playerRadius,
+                              0,
+                              camera.position.z - playerRadius
+                          ),
+                          new THREE.Vector3(
+                              camera.position.x + playerRadius,
+                              2,
+                              camera.position.z + playerRadius
+                          )
+                      );
+                      
+                      if (box.intersectsBox(playerBox)) {
+                          // Collision detected, push player back
+                          const centerX = (box.min.x + box.max.x) / 2;
+                          const centerZ = (box.min.z + box.max.z) / 2;
+                          const dx = camera.position.x - centerX;
+                          const dz = camera.position.z - centerZ;
+                          
+                          if (Math.abs(dx) > Math.abs(dz)) {
+                              camera.position.x = dx > 0 ? box.max.x + playerRadius : box.min.x - playerRadius;
+                          } else {
+                              camera.position.z = dz > 0 ? box.max.z + playerRadius : box.min.z - playerRadius;
+                          }
+                      }
+                  }
               }
               
               // Jump physics
