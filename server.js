@@ -139,17 +139,29 @@ io.on('connection', (socket) => {
 
     socket.on('respawn', (data) => {
         if (players[socket.id]) {
-            players[socket.id].health = 100;
-            players[socket.id].position = data.position;
-            if (data.rotation) {
-                players[socket.id].rotation = data.rotation;
-            }
+            // Server generates spawn position
+            const spawnX = (Math.random() - 0.5) * 30;
+            const spawnZ = (Math.random() - 0.5) * 30;
+            const spawnRotation = Math.random() * Math.PI * 2;
             
-            // Only broadcast to other players, not everyone
+            players[socket.id].health = 100;
+            players[socket.id].position = { x: spawnX, y: 1.6, z: spawnZ };
+            players[socket.id].rotation = { y: spawnRotation };
+            
+            // Send spawn position back to the respawning player
+            io.to(socket.id).emit('playerRespawned', {
+                id: socket.id,
+                name: players[socket.id].name,
+                position: players[socket.id].position,
+                health: 100,
+                rotation: players[socket.id].rotation
+            });
+            
+            // Broadcast to other players
             socket.broadcast.emit('playerRespawned', {
                 id: socket.id,
                 name: players[socket.id].name,
-                position: data.position,
+                position: players[socket.id].position,
                 health: 100,
                 rotation: players[socket.id].rotation
             });

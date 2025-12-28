@@ -421,6 +421,14 @@
               // Make sure we update the existing player, not create a new one
               if (data.id !== playerId) {
                   updateOtherPlayer(data);
+              } else {
+                  // Update our own position from server (for respawn)
+                  if (data.position) {
+                      camera.position.set(data.position.x, data.position.y, data.position.z);
+                  }
+                  if (data.rotation && data.rotation.y !== undefined) {
+                      yaw = data.rotation.y;
+                  }
               }
           });
 
@@ -920,22 +928,17 @@
           health = 100;
           ammo = 30;
           
-          // Random spawn position within arena
-          const spawnX = (Math.random() - 0.5) * 30;
-          const spawnZ = (Math.random() - 0.5) * 30;
-          camera.position.set(spawnX, 1.6, spawnZ);
-          
-          // Random rotation
-          yaw = Math.random() * Math.PI * 2;
-          
           updateUI();
           
           if (isOnline && socket) {
-              socket.emit('respawn', {
-                  position: camera.position,
-                  health: health,
-                  rotation: { y: yaw }
-              });
+              // Let server decide spawn position
+              socket.emit('respawn');
+          } else {
+              // Offline mode: generate position locally
+              const spawnX = (Math.random() - 0.5) * 30;
+              const spawnZ = (Math.random() - 0.5) * 30;
+              camera.position.set(spawnX, 1.6, spawnZ);
+              yaw = Math.random() * Math.PI * 2;
           }
       }
 
